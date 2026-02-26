@@ -16,7 +16,102 @@ except ImportError:
     sys.exit(1)
 
 import asyncio
+import json
+import os
 import neewer_config
+
+
+class BLEWorker:
+    """Background BLE connection manager for the TUI."""
+
+    def __init__(self, store):
+        self.store = store
+        self.client = None
+        self.mac_bytes = None
+        self.proto = None
+        self.connected = False
+        self._queue = asyncio.Queue()
+
+    async def connect(self):
+        import neewer
+        from bleak import BleakClient
+
+        cfg_name = self.store.active
+        cfg = self.store.get_active()
+        if not cfg or not cfg["lights"]:
+            return False
+
+        relay_role = self.store.get_relay_role(cfg_name)
+        device = cfg["lights"][relay_role]["device"]
+
+        # Resolve address from cache
+        cache_path = os.path.expanduser("~/.neewer_cache.json")
+        addr = device
+        if os.path.exists(cache_path):
+            with open(cache_path) as f:
+                cache = json.load(f)
+            for a, info in cache.get("lights", {}).items():
+                if info.get("alias") == device or info.get("name") == device:
+                    addr = a
+                    break
+
+        try:
+            self.client = BleakClient(addr)
+            await self.client.connect()
+            self.mac_bytes = neewer.parse_mac(
+                cache.get("macs", {}).get(addr, "00:00:00:00:00:00"))
+            dname = cache.get("lights", {}).get(addr, {}).get("name", "")
+            self.proto = neewer.detect_protocol(dname)
+            self.connected = True
+            return True
+        except Exception:
+            self.connected = False
+            return False
+
+    async def send(self, role, mode, params):
+        await self._queue.put((role, mode, params))
+
+    async def run(self):
+        """Process command queue."""
+        import neewer
+
+        while True:
+            role, mode, params = await self._queue.get()
+            if not self.connected:
+                continue
+            cfg = self.store.get_active()
+            nid = cfg["network_id"]
+            ch = cfg["channels"].get(role)
+            bri = params.get("brightness", 50)
+
+            try:
+                if mode == "power":
+                    on = params.get("on", True)
+                    if ch is not None:
+                        pkt = neewer.ch_cmd_power(nid, ch, on=on)
+                    else:
+                        pkt = neewer.build_power(self.proto, self.mac_bytes, on=on)
+                elif mode == "cct":
+                    temp = params.get("temp", 5000)
+                    gm = params.get("gm", 0)
+                    if ch is not None:
+                        pkt = neewer.ch_cmd_cct(nid, ch, bri, temp, gm)
+                    else:
+                        pkt = neewer.build_cct(self.proto, self.mac_bytes, bri, temp, gm)
+                elif mode == "hsi":
+                    hue = params.get("hue", 0)
+                    sat = params.get("sat", 100)
+                    if ch is not None:
+                        pkt = neewer.ch_cmd_hsi(nid, ch, hue, sat, bri)
+                    else:
+                        pkt = neewer.build_hsi(self.proto, self.mac_bytes, hue, sat, bri)
+                else:
+                    continue
+
+                await self.client.write_gatt_char(
+                    neewer.WRITE_UUID, pkt, response=False)
+            except Exception:
+                self.connected = False
 
 
 class LightCard(Static):
@@ -123,6 +218,7 @@ class NeewerTUI(App):
     def __init__(self):
         super().__init__()
         self.store = neewer_config.ConfigStore()
+        self.ble = BLEWorker(self.store)
 
     def compose(self):
         yield Header()
@@ -135,6 +231,14 @@ class NeewerTUI(App):
                 yield Label("Performance Console — coming soon")
         yield Footer()
         yield Label(self._status_text(), classes="status-bar")
+
+    async def on_mount(self):
+        ok = await self.ble.connect()
+        if ok:
+            self.notify("BLE connected")
+            asyncio.get_event_loop().create_task(self.ble.run())
+        else:
+            self.notify("BLE not connected (offline mode)", severity="warning")
 
     def _status_text(self):
         cfg = self.store.get_active()
@@ -154,9 +258,13 @@ class NeewerTUI(App):
         if btn_id.startswith("on-"):
             role = btn_id[3:]
             self.notify(f"Power ON: {role}")
+            asyncio.get_event_loop().create_task(
+                self.ble.send(role, "power", {"on": True}))
         elif btn_id.startswith("off-"):
             role = btn_id[4:]
             self.notify(f"Power OFF: {role}")
+            asyncio.get_event_loop().create_task(
+                self.ble.send(role, "power", {"on": False}))
         elif btn_id.startswith("snap-"):
             snap = btn_id[5:]
             self.notify(f"Recall snapshot: {snap}")
