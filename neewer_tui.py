@@ -272,6 +272,24 @@ class FaderWidget(Static):
                         classes="fader-btn")
 
 
+class AudioMeter(Static):
+    """Live audio level display."""
+
+    amplitude = reactive(0.0)
+    beat = reactive(False)
+    bpm = reactive(0.0)
+    bands = reactive((0.0, 0.0, 0.0))
+
+    def render(self):
+        bar_len = int(self.amplitude * 30)
+        bar = "\u2588" * bar_len + "\u2591" * (30 - bar_len)
+        beat_str = " \u266a" if self.beat else ""
+        bpm_str = f" ~{self.bpm:.0f} BPM" if self.bpm > 0 else ""
+        b, m, t = self.bands
+        return (f"Audio: |{bar}| {self.amplitude:.0%}{beat_str}{bpm_str}"
+                f"  B:{b:.2f} M:{m:.2f} T:{t:.2f}")
+
+
 class ConsoleView(Container):
     """Performance console: faders, hotkeys, scene status."""
 
@@ -310,9 +328,11 @@ class ConsoleView(Container):
             yield Button("F5: Scene", id="hotkey-f5")
             yield Button("F6: Blackout", id="hotkey-f6", variant="error")
 
+        # Audio meter
+        yield AudioMeter(id="audio-meter")
+
         # Scene status
         yield Label("Now Playing: (none)", id="now-playing", classes="section-label")
-        yield Label("Audio: (not connected)", id="audio-status")
 
 
 class NeewerTUI(App):
@@ -401,6 +421,33 @@ class NeewerTUI(App):
             asyncio.get_event_loop().create_task(self.ble.run())
         else:
             self.notify("BLE not connected (offline mode)", severity="warning")
+
+        # Start audio monitoring
+        asyncio.get_event_loop().create_task(self._audio_loop())
+
+    async def _audio_loop(self):
+        try:
+            import neewer_audio
+            source = neewer_audio.MicSource()
+            await source.start()
+        except Exception:
+            return
+
+        try:
+            while True:
+                frame = await source.read_frame()
+                try:
+                    meter = self.query_one("#audio-meter", AudioMeter)
+                    meter.amplitude = frame.amplitude
+                    meter.beat = frame.beat
+                    meter.bpm = frame.bpm
+                    meter.bands = tuple(frame.bands)
+                except NoMatches:
+                    pass
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await source.stop()
 
     def _status_text(self):
         cfg = self.store.get_active()
