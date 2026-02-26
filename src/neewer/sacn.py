@@ -29,7 +29,12 @@ import sys
 import threading
 import time
 
-import sacn
+try:
+    import sacn
+except ImportError:
+    raise ImportError(
+        "sacn package required. Install with: pip install neewer-ble[sacn]"
+    ) from None
 from bleak import BleakClient, BleakScanner
 
 # Import protocol layer

@@ -36,14 +36,21 @@ pyproject.toml       # Package config, deps, pytest config
 
 ```bash
 # Install in editable mode (from repo root)
-/opt/homebrew/Caskroom/miniforge/base/bin/pip install -e ".[dev,audio,tui]"
+/opt/homebrew/Caskroom/miniforge/base/bin/pip install -e ".[dev]"   # full + test deps
+
+# Install tiers (PyPI name: neewer-ble)
+pip install neewer-ble              # core: protocol, config, scenes, audio framework (bleak + pyyaml)
+pip install neewer-ble[audio]       # + numpy/sounddevice for audio-reactive scenes
+pip install neewer-ble[sacn]        # + sacn bridge
+pip install neewer-ble[tui]         # + textual TUI
+pip install neewer-ble[full]        # everything
 
 # Run CLI
 neewer <command>                  # via console script
 python -m neewer <command>       # via module
 
 # Run sACN bridge
-neewer-sacn                      # via console script
+neewer-sacn                      # via console script (requires [sacn] extra)
 
 # Run tests
 pytest                           # uses pyproject.toml [tool.pytest.ini_options]
@@ -200,7 +207,9 @@ import neewer                            # via __init__.py re-exports (public na
 
 - Use fully qualified conda path: `/opt/homebrew/Caskroom/miniforge/base/bin/conda` or activate the environment before running Python scripts.
 - Do not assume `conda` or `python` are on the default PATH.
-- Dependencies managed via `pyproject.toml`: core (`bleak`, `sacn`, `pyyaml`), optional extras `[tui]`, `[audio]`, `[dev]`
+- PyPI name: `neewer-ble`, import name: `neewer`
+- Base deps: `bleak>=0.21.0`, `pyyaml>=6.0` (protocol, config, scenes)
+- Optional extras: `[audio]` (numpy, sounddevice), `[sacn]` (sacn), `[tui]` (textual), `[full]` (all), `[dev]` (full + pytest)
 
 ## Key Patterns
 
