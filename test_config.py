@@ -155,3 +155,59 @@ def test_network_id_is_random():
     store.create("b")
     assert store.configs["a"]["network_id"] != store.configs["b"]["network_id"]
     os.unlink(path)
+
+
+# --- Task 2: Snapshots ---
+
+def test_snapshot_save():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022")
+    state = {"key": {"mode": "cct", "brightness": 80, "temp": 5600, "gm": 0}}
+    store.snapshot_save("studio", "interview", state)
+    snaps = store.configs["studio"]["snapshots"]
+    assert "interview" in snaps
+    assert snaps["interview"]["key"]["brightness"] == 80
+    os.unlink(path)
+
+
+def test_snapshot_recall():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022")
+    state = {"key": {"mode": "cct", "brightness": 80, "temp": 5600, "gm": 0}}
+    store.snapshot_save("studio", "interview", state)
+    recalled = store.snapshot_recall("studio", "interview")
+    assert recalled["key"]["temp"] == 5600
+    os.unlink(path)
+
+
+def test_snapshot_recall_missing_raises():
+    store, path = _tmp_store()
+    store.create("studio")
+    try:
+        store.snapshot_recall("studio", "nope")
+        assert False, "Should have raised"
+    except ValueError:
+        pass
+    os.unlink(path)
+
+
+def test_snapshot_delete():
+    store, path = _tmp_store()
+    store.create("studio")
+    state = {"key": {"mode": "cct", "brightness": 80, "temp": 5600}}
+    store.snapshot_save("studio", "interview", state)
+    store.snapshot_delete("studio", "interview")
+    assert "interview" not in store.configs["studio"]["snapshots"]
+    os.unlink(path)
+
+
+def test_snapshot_list():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.snapshot_save("studio", "a", {"key": {"mode": "cct", "brightness": 50}})
+    store.snapshot_save("studio", "b", {"key": {"mode": "hsi", "hue": 120}})
+    names = store.snapshot_list("studio")
+    assert sorted(names) == ["a", "b"]
+    os.unlink(path)
