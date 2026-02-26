@@ -2140,6 +2140,9 @@ def build_parser():
 
     sub.add_parser("tui", help="launch terminal UI")
 
+    p_audio = sub.add_parser("audio-test", help="test microphone input (show live levels)")
+    p_audio.add_argument("--device", type=int, default=None, help="audio device index")
+
     return parser
 
 
@@ -2510,7 +2513,8 @@ async def main():
         return
 
     # Commands that don't require --light are handled after this block
-    no_light_commands = ("config", "connections", "scene-run", "scene-list", "tui")
+    no_light_commands = ("config", "connections", "scene-run", "scene-list", "tui",
+                         "audio-test")
     raw_light = getattr(args, "light", None)
     config_target = getattr(args, "config_target", None)
 
@@ -3574,6 +3578,32 @@ async def main():
         import neewer_tui
         neewer_tui.main()
         return
+
+    elif args.command == "audio-test":
+        import neewer_audio
+        source = neewer_audio.MicSource(device=args.device)
+
+        async def run_test():
+            await source.start()
+            print("Listening... (Ctrl+C to stop)\n")
+            try:
+                while True:
+                    frame = await source.read_frame()
+                    bar_len = int(frame.amplitude * 40)
+                    bar = "\u2588" * bar_len + "\u2591" * (40 - bar_len)
+                    beat = " BEAT!" if frame.beat else ""
+                    bass, mid, treble = frame.bands
+                    bpm_str = f" ~{frame.bpm:.0f} BPM" if frame.bpm > 0 else ""
+                    print(f"\r  Vol: |{bar}| {frame.amplitude:.2f}{beat}{bpm_str}"
+                          f"  B:{bass:.2f} M:{mid:.2f} T:{treble:.2f}    ",
+                          end="", flush=True)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                await source.stop()
+                print("\nDone.")
+
+        await run_test()
 
 
 if __name__ == "__main__":
