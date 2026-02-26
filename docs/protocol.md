@@ -523,9 +523,206 @@ Reassembled (27b): 78 08 17 {MAC} 01 0A 02 00 05 02 "TL120 RGB-2" DB
 
 Expected size: `0x17` (23) + 4 = 27 bytes. Fragment 1 is 20 bytes (BLE MTU), fragment 2 carries remaining 7 bytes.
 
+## Channel-Addressed Commands (Group Broadcast)
+
+Discovered via APK decompilation of NEEWER Studio Tablet v1.0.6. The iOS app's "master/slave" feature uses channel-based broadcasting — not device-to-device relay.
+
+### Channel Command Envelope
+
+```
+Byte 0:     0x78              (prefix)
+Byte 1:     TAG               (channel-variant command type)
+Byte 2:     SIZE              (= len(PARAMS) + 6)
+Bytes 3-6:  NETID[0..3]       (NetworkId, 4 bytes little-endian)
+Byte 7:     CH                (channel number, 1 byte)
+Byte 8:     SUBTAG            (sub-command identifier)
+Bytes 9+:   PARAMS            (variable length)
+Last byte:  CHECKSUM
+```
+
+**NetworkId**: 32-bit integer identifying the group network. All lights in a group share the same NetworkId. Stored per-user.
+
+**Channel**: 1-byte channel number. Lights assigned to the same channel + NetworkId respond simultaneously.
+
+### Channel vs MAC Command Mapping
+
+| Command | MAC TAG | Channel TAG | SUBTAG |
+|---------|---------|-------------|--------|
+| Power   | 0x8D    | 0x98        | 0x81   |
+| HSI     | 0x8F    | 0x92        | 0x86   |
+| CCT     | 0x90    | 0x93        | 0x87   |
+| Scene   | 0x91    | 0x94        | 0x8B   |
+| RGBCW   | 0xA9    | 0xAA        | 0xA8   |
+| Gel     | 0xAD    | 0xAE        | —      |
+| XY      | 0xB7    | 0xB8        | —      |
+
+### Network Management Commands
+
+#### Assign light to channel — TAG 0x9F
+```
+78 9F 0C MAC[6] 01 CH NETID[4] CS    (16 bytes)
+```
+Action byte = 0x01 (ADD). Assigns the light to the specified channel.
+
+#### Remove light from channel — TAG 0x9F
+```
+78 9F 0C MAC[6] 02 CH 00 00 00 00 CS    (16 bytes)
+```
+Action byte = 0x02 (DELETE).
+
+#### Set/Query channel — TAG 0x8C
+```
+78 8C 0B MAC[6] CH NETID[4] CS    (15 bytes)
+```
+
+#### Delete from network — TAG 0x9B
+```
+78 9B 09 MAC[6] 02 01 00 CS    (12 bytes)
+```
+
+### Workflow: Setting Up Channel Groups
+
+1. Connect to each light individually via BLE
+2. Send `78 9F 0C MAC[6] 01 CH NETID[4] CS` to assign it to a channel
+3. Disconnect from all but one light (the "relay")
+4. Send channel-addressed commands through the relay light
+5. All lights assigned to that channel respond simultaneously
+
+## Native Gel (Color Paper) Commands
+
+The Infinity protocol has a dedicated gel command — no longer need to approximate via CCT/HSI.
+
+### MAC-addressed — TAG 0xAD
+```
+78 AD 0D MAC[6] HUE_HI HUE_LO SAT BRI DBRI BRAND GEL CS    (17 bytes)
+```
+- HUE: 16-bit **big-endian** (opposite of HSI which is little-endian!)
+- BRAND: 1 = ROSCO, 2 = LEE
+- GEL: gel preset number
+- DBRI: decimal brightness (sub-percent for smooth fading)
+
+### Channel-addressed — TAG 0xAE
+```
+78 AE 0C NETID[4] CH HUE_HI HUE_LO SAT BRI DBRI BRAND GEL CS    (16 bytes)
+```
+
+## RGBCW Commands (Direct RGB + Cold/Warm White)
+
+### MAC-addressed — TAG 0xA9
+```
+78 A9 0E MAC[6] A8 BRI R G B C W DBRI CS    (18 bytes)
+```
+SUBTAG = 0xA8. R, G, B, C (cold white), W (warm white) are each 0-255.
+
+### Channel-addressed — TAG 0xAA
+```
+78 AA 0D NETID[4] CH A8 BRI R G B C W DBRI CS    (17 bytes)
+```
+
+## XY Color Coordinate Commands
+
+CIE 1931 chromaticity coordinates for precise color matching.
+
+### MAC-addressed — TAG 0xB7
+```
+78 B7 0C MAC[6] BRI X_HI X_LO Y_HI Y_LO DBRI CS    (16 bytes)
+```
+XY encoding: float → strip "0." → pad to 4 digits → 16-bit big-endian.
+Example: x=0.3127 → "3127" → [0x0C, 0x37]
+
+### Channel-addressed — TAG 0xB8
+```
+78 B8 0B NETID[4] CH BRI X_HI X_LO Y_HI Y_LO DBRI CS    (15 bytes)
+```
+
+## Utility Commands
+
+### Find/Locate — TAG 0x99
+```
+78 99 06 MAC[6] CS    (10 bytes)
+```
+Makes the light flash to help locate it.
+
+### Battery Query — TAG 0x95
+```
+78 95 06 MAC[6] CS    (10 bytes)
+```
+Same as HW info query. Response byte[9]: 0-100 = battery %, 0xF0 = charging.
+
+### Temperature/Fan Query — TAG 0xB3
+```
+78 B3 06 MAC[6] CS    (10 bytes)
+```
+
+### Fan Mode Set — TAG 0xB4
+```
+78 B4 07 MAC[6] MODE CS    (11 bytes)
+```
+
+### Booster Enable/Disable — TAG 0xAB
+```
+78 AB 07 MAC[6] 01 CS    (enable)
+78 AB 07 MAC[6] 02 CS    (disable)
+```
+
+### Booster State Query — TAG 0xAC
+```
+78 AC 06 MAC[6] CS    (10 bytes)
+```
+
+## Complete TAG Reference
+
+| TAG  | Hex  | Name | Address Mode |
+|------|------|------|-------------|
+| 0x80 | 128 | Device info (legacy) | — |
+| 0x81 | 129 | Legacy power | Bluetooth |
+| 0x82 | 130 | Legacy brightness | Bluetooth |
+| 0x83 | 131 | Legacy CCT | Bluetooth |
+| 0x84 | 132 | Query channel (legacy) | — |
+| 0x85 | 133 | Query power state (legacy) | — |
+| 0x8C | 140 | Channel set/query | MAC |
+| 0x8D | 141 | Power | MAC |
+| 0x8E | 142 | Power query | MAC |
+| 0x8F | 143 | HSI | MAC |
+| 0x90 | 144 | CCT | MAC |
+| 0x91 | 145 | Scene | MAC |
+| 0x92 | 146 | HSI | Channel |
+| 0x93 | 147 | CCT | Channel |
+| 0x94 | 148 | Scene | Channel |
+| 0x95 | 149 | Battery / HW info | MAC |
+| 0x96 | 150 | FW update start | — |
+| 0x97 | 151 | FW data packet | — |
+| 0x98 | 152 | Power | Channel |
+| 0x99 | 153 | Find device | MAC |
+| 0x9A | 154 | BT switch | MAC |
+| 0x9B | 155 | Network edit | MAC |
+| 0x9D | 157 | Online query | MAC |
+| 0x9E | 158 | Device info | MAC |
+| 0x9F | 159 | Network config | MAC |
+| 0xA8 | 168 | RGBCW | Bluetooth |
+| 0xA9 | 169 | RGBCW | MAC |
+| 0xAA | 170 | RGBCW | Channel |
+| 0xAB | 171 | Booster set | MAC |
+| 0xAC | 172 | Booster query | MAC |
+| 0xAD | 173 | Color Paper (Gel) | MAC |
+| 0xAE | 174 | Color Paper (Gel) | Channel |
+| 0xAF | 175 | Color Paper (Gel) | Bluetooth |
+| 0xB0 | 176 | Pixel effect | MAC |
+| 0xB1 | 177 | Pixel effect | Channel |
+| 0xB2 | 178 | Pixel effect | Bluetooth |
+| 0xB3 | 179 | Temp/Fan query | MAC |
+| 0xB4 | 180 | Fan mode set | MAC |
+| 0xB7 | 183 | XY Color | MAC |
+| 0xB8 | 184 | XY Color | Channel |
+| 0xB9 | 185 | XY Color | Bluetooth |
+| 0xBD | 189 | Double light query | MAC |
+| 0xBE | 190 | Double light set | MAC |
+| 0xD9 | 217 | RGBW (simple) | MAC |
+
 ## References
 
 - [NeewerLite (Swift)](https://github.com/keefo/NeewerLite) — `NeewerLight.swift`, `NeewerLightConstant.swift`, `NeewerLightFX.swift`
 - [NeewerLite-Python](https://github.com/taburineagle/NeewerLite-Python) — `NeewerLite-Python.py`
 - [RGB660 PRO Protocol](https://gist.github.com/JDogHerman/483b4e56537892cb2089a63cc12e5631) — legacy protocol reference
+- NEEWER Studio Tablet APK v1.0.6 — decompiled with JADX, analysis in `re_tools/apk_analysis.md`
 - DMX Specs (in repo): `TL60 RGB DMX-EN.pdf`, `TL90C DMXEN.pdf`, `TL120C DMXEN.pdf`, `PL60C DMXEN.pdf`

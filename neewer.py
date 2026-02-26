@@ -19,7 +19,7 @@ SERVICE_UUID = "69400001-B5A3-F393-E0A9-E50E24DCCA99"
 WRITE_UUID = "69400002-B5A3-F393-E0A9-E50E24DCCA99"
 NOTIFY_UUID = "69400003-B5A3-F393-E0A9-E50E24DCCA99"
 
-# Infinity protocol tags
+# Infinity protocol tags — MAC-addressed
 PREFIX = 0x78
 TAG_POWER = 0x8D
 TAG_HSI = 0x8F
@@ -29,6 +29,38 @@ SUBTAG_POWER = 0x81
 SUBTAG_HSI = 0x86
 SUBTAG_CCT = 0x87
 SUBTAG_SCENE = 0x8B
+
+# Infinity protocol tags — channel-addressed (group broadcast)
+TAG_CH_POWER = 0x98
+TAG_CH_HSI = 0x92
+TAG_CH_CCT = 0x93
+TAG_CH_SCENE = 0x94
+
+# Network management tags
+TAG_CHANNEL_CONFIG = 0x9F  # Assign/remove light from channel
+TAG_CHANNEL_SET = 0x8C     # Set/query channel on a light
+TAG_NETWORK_EDIT = 0x9B    # Delete light from network
+
+# Native Gel (Color Paper) tags
+TAG_GEL_MAC = 0xAD
+TAG_GEL_CH = 0xAE
+
+# RGBCW tags
+TAG_RGBCW_MAC = 0xA9
+TAG_RGBCW_CH = 0xAA
+SUBTAG_RGBCW = 0xA8
+
+# XY Color Coordinate tags
+TAG_XY_MAC = 0xB7
+TAG_XY_CH = 0xB8
+
+# Utility tags
+TAG_FIND = 0x99       # Flash light to locate
+TAG_BATTERY = 0x95    # Query battery level (same as TAG_HW_INFO)
+TAG_TEMP_FAN = 0xB3   # Query temperature/fan
+TAG_FAN_SET = 0xB4    # Set fan mode
+TAG_BOOSTER = 0xAB    # Enable/disable booster
+TAG_BOOSTER_Q = 0xAC  # Query booster state
 
 # Legacy query commands (no MAC envelope needed)
 CMD_READ_REQUEST = bytes([0x78, 0x84, 0x00, 0xFC])
@@ -378,6 +410,22 @@ def _save_cache():
         pass
 
 
+import random as _random
+
+
+def _get_network_id(explicit=None):
+    """Get or generate a NetworkId for channel operations."""
+    if explicit is not None:
+        return explicit
+    nid = _cache.get("network_id")
+    if nid is not None:
+        return nid
+    nid = _random.randint(1, 0x7FFFFFFF)
+    _cache["network_id"] = nid
+    _save_cache()
+    return nid
+
+
 def _resolve_light_alias(identifier):
     """Resolve a light alias/name/index to (address, device_name).
 
@@ -514,8 +562,24 @@ def cmd_hsi(mac_bytes, hue, sat, brightness):
                         [hue_lo, hue_hi, sat, brightness, 0x00])
 
 
+def _parse_gel_brand_num(gel_name):
+    """Parse gel name → (brand, gel_num). brand: 1=ROSCO, 2=LEE.
+    R/G/E prefixes are ROSCO (Roscolux/GamColor/e-colour+), L is LEE.
+    gel_num is clamped to 0-255 (single byte); catalog numbers may exceed this."""
+    if not gel_name:
+        return None, 0
+    prefix = gel_name[0].upper()
+    digits = ''.join(c for c in gel_name[1:] if c.isdigit())
+    num = min(255, int(digits)) if digits else 0
+    if prefix in ('R', 'G', 'E'):
+        return 1, num  # ROSCO
+    elif prefix == 'L':
+        return 2, num  # LEE
+    return None, 0
+
+
 def cmd_gel(mac_bytes, brightness, gel_name):
-    """Convert a gel preset to a CCT or HSI command."""
+    """Convert a gel preset to a CCT or HSI command (legacy/extended)."""
     preset = GEL_PRESETS.get(gel_name)
     if not preset:
         raise ValueError(f"Unknown gel: {gel_name}")
@@ -551,6 +615,219 @@ def cmd_hw_info(mac_bytes):
 def cmd_channel(mac_bytes):
     """Query channel/group assignment. Returns single byte (0=unassigned)."""
     return infinity_cmd(TAG_CHANNEL, mac_bytes, 0x00, [])
+
+
+# --- Channel-addressed (group broadcast) command builders ---
+
+def channel_cmd(tag, network_id, ch, subtag, params):
+    """Build channel-addressed command: 78 TAG LEN NETID[4] CH SUBTAG PARAMS CS"""
+    netid_bytes = list(network_id.to_bytes(4, 'little'))
+    body = netid_bytes + [ch, subtag] + list(params)
+    size = len(body)
+    pkt = [PREFIX, tag, size] + body
+    pkt.append(calc_checksum(pkt))
+    return bytes(pkt)
+
+
+def ch_cmd_power(network_id, ch, on=True):
+    return channel_cmd(TAG_CH_POWER, network_id, ch, SUBTAG_POWER,
+                       [0x01 if on else 0x02])
+
+
+def ch_cmd_cct(network_id, ch, brightness, temp_k, gm=0, curve=4, dbri=0):
+    brightness = max(0, min(100, brightness))
+    cct_val = max(25, min(100, temp_k // 100))
+    gm_byte = max(0, min(100, gm + 50))
+    return channel_cmd(TAG_CH_CCT, network_id, ch, SUBTAG_CCT,
+                       [brightness, cct_val, gm_byte, curve, dbri])
+
+
+def ch_cmd_hsi(network_id, ch, hue, sat, brightness):
+    hue = max(0, min(359, hue))
+    sat = max(0, min(100, sat))
+    brightness = max(0, min(100, brightness))
+    hue_lo = hue & 0xFF
+    hue_hi = (hue >> 8) & 0xFF
+    return channel_cmd(TAG_CH_HSI, network_id, ch, SUBTAG_HSI,
+                       [hue_lo, hue_hi, sat, brightness, 0x00])
+
+
+def ch_cmd_scene(network_id, ch, effect_id, brightness=50, speed=5, **kwargs):
+    param_defs = EFFECT_PARAMS.get(effect_id)
+    if not param_defs:
+        raise ValueError(f"Unknown effect ID: 0x{effect_id:02X}")
+    if effect_id == 0x0E:
+        params = _build_int_loop_params(brightness, speed, **kwargs)
+        return channel_cmd(TAG_CH_SCENE, network_id, ch, SUBTAG_SCENE, [effect_id] + params)
+    overrides = _clamp_scene_kwargs(brightness, speed, kwargs)
+    params = _build_scene_params(param_defs, overrides)
+    return channel_cmd(TAG_CH_SCENE, network_id, ch, SUBTAG_SCENE, [effect_id] + params)
+
+
+# --- Network management commands ---
+
+def cmd_channel_assign(mac_bytes, ch, network_id):
+    """Assign a light to a channel. TAG 0x9F action=1."""
+    netid = list(network_id.to_bytes(4, 'little'))
+    data = [PREFIX, TAG_CHANNEL_CONFIG, 0x0C] + mac_bytes + [0x01, ch] + netid
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def cmd_channel_remove(mac_bytes, ch):
+    """Remove a light from a channel. TAG 0x9F action=2."""
+    data = [PREFIX, TAG_CHANNEL_CONFIG, 0x0C] + mac_bytes + [0x02, ch, 0x00, 0x00, 0x00, 0x00]
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def cmd_channel_set(mac_bytes, ch, network_id):
+    """Set/query channel on a light. TAG 0x8C."""
+    netid = list(network_id.to_bytes(4, 'little'))
+    data = [PREFIX, TAG_CHANNEL_SET, 0x0B] + mac_bytes + [ch] + netid
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def cmd_network_delete(mac_bytes):
+    """Delete light from network. TAG 0x9B."""
+    data = [PREFIX, TAG_NETWORK_EDIT, 0x09] + mac_bytes + [0x02, 0x01, 0x00]
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+# --- Native Gel (Color Paper) commands ---
+
+def _encode_hue_be(hue):
+    """Encode hue as 2-byte big-endian (used by Gel/ColorPaper commands)."""
+    hue = max(0, min(359, hue))
+    return [(hue >> 8) & 0xFF, hue & 0xFF]
+
+
+def cmd_gel_native(mac_bytes, hue, sat, brightness, brand, gel_num, dbri=0):
+    """Native gel command. TAG 0xAD. brand: 1=ROSCO, 2=LEE.
+    Format: 78 AD 0D MAC[6] HUE_HI HUE_LO SAT BRI DBRI BRAND GEL CS (no subtag)."""
+    hue_bytes = _encode_hue_be(hue)
+    sat = max(0, min(100, sat))
+    brightness = max(0, min(100, brightness))
+    payload = hue_bytes + [sat, brightness, dbri, brand, gel_num]
+    size = len(mac_bytes) + len(payload)
+    data = [PREFIX, TAG_GEL_MAC, size] + list(mac_bytes) + payload
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def ch_cmd_gel_native(network_id, ch, hue, sat, brightness, brand, gel_num, dbri=0):
+    """Native gel via channel. TAG 0xAE."""
+    hue_bytes = _encode_hue_be(hue)
+    sat = max(0, min(100, sat))
+    brightness = max(0, min(100, brightness))
+    netid = list(network_id.to_bytes(4, 'little'))
+    data = [PREFIX, TAG_GEL_CH, 0x0C] + netid + [ch] + hue_bytes + [sat, brightness, dbri, brand, gel_num]
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+# --- RGBCW commands ---
+
+def cmd_rgbcw(mac_bytes, brightness, r, g, b, cold, warm, dbri=0):
+    """Direct RGBCW via MAC. TAG 0xA9, SUBTAG 0xA8."""
+    brightness = max(0, min(100, brightness))
+    r = max(0, min(255, r))
+    g = max(0, min(255, g))
+    b = max(0, min(255, b))
+    cold = max(0, min(255, cold))
+    warm = max(0, min(255, warm))
+    return infinity_cmd(TAG_RGBCW_MAC, mac_bytes, SUBTAG_RGBCW,
+                        [brightness, r, g, b, cold, warm, dbri])
+
+
+def ch_cmd_rgbcw(network_id, ch, brightness, r, g, b, cold, warm, dbri=0):
+    """RGBCW via channel. TAG 0xAA."""
+    brightness = max(0, min(100, brightness))
+    r = max(0, min(255, r))
+    g = max(0, min(255, g))
+    b = max(0, min(255, b))
+    cold = max(0, min(255, cold))
+    warm = max(0, min(255, warm))
+    return channel_cmd(TAG_RGBCW_CH, network_id, ch, SUBTAG_RGBCW,
+                       [brightness, r, g, b, cold, warm, dbri])
+
+
+# --- XY Color Coordinate commands ---
+
+def _encode_xy(val):
+    """Encode CIE xy coordinate (0.0-1.0) as 2-byte big-endian integer.
+    0.3127 → strip '0.' → '3127' → pad to 4 digits → int → 2 bytes BE."""
+    s = f"{val:.4f}"
+    digits = s.replace("0.", "").replace("1.", "9999")[:4]
+    v = int(digits)
+    return [(v >> 8) & 0xFF, v & 0xFF]
+
+
+def cmd_xy(mac_bytes, brightness, x, y, dbri=0):
+    """XY color coordinate via MAC. TAG 0xB7.
+    Format: 78 B7 0C MAC[6] BRI X_HI X_LO Y_HI Y_LO DBRI CS (no subtag)."""
+    brightness = max(0, min(100, brightness))
+    x_bytes = _encode_xy(x)
+    y_bytes = _encode_xy(y)
+    payload = [brightness] + x_bytes + y_bytes + [dbri]
+    size = len(mac_bytes) + len(payload)
+    data = [PREFIX, TAG_XY_MAC, size] + list(mac_bytes) + payload
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def ch_cmd_xy(network_id, ch, brightness, x, y, dbri=0):
+    """XY color coordinate via channel. TAG 0xB8."""
+    brightness = max(0, min(100, brightness))
+    x_bytes = _encode_xy(x)
+    y_bytes = _encode_xy(y)
+    netid = list(network_id.to_bytes(4, 'little'))
+    data = [PREFIX, TAG_XY_CH, 0x0B] + netid + [ch, brightness] + x_bytes + y_bytes + [dbri]
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+# --- Utility commands ---
+
+def _mac_cmd(tag, mac_bytes, params=None):
+    """Build MAC-addressed command without subtag: 78 TAG SIZE MAC[6] PARAMS CS."""
+    params = params or []
+    size = len(mac_bytes) + len(params)
+    data = [PREFIX, tag, size] + list(mac_bytes) + params
+    data.append(calc_checksum(data))
+    return bytes(data)
+
+
+def cmd_find(mac_bytes):
+    """Flash a light to locate it. TAG 0x99."""
+    return _mac_cmd(TAG_FIND, mac_bytes)
+
+
+def cmd_battery(mac_bytes):
+    """Query battery level. TAG 0x95. Response: byte[9] = level (0-100, 0xF0=charging)."""
+    return _mac_cmd(TAG_BATTERY, mac_bytes)
+
+
+def cmd_temp_fan_query(mac_bytes):
+    """Query temperature and fan mode. TAG 0xB3."""
+    return _mac_cmd(TAG_TEMP_FAN, mac_bytes)
+
+
+def cmd_fan_set(mac_bytes, mode):
+    """Set fan mode. TAG 0xB4."""
+    return _mac_cmd(TAG_FAN_SET, mac_bytes, [mode])
+
+
+def cmd_booster(mac_bytes, enable=True):
+    """Enable/disable booster. TAG 0xAB."""
+    return _mac_cmd(TAG_BOOSTER, mac_bytes, [0x01 if enable else 0x02])
+
+
+def cmd_booster_query(mac_bytes):
+    """Query booster state. TAG 0xAC."""
+    return _mac_cmd(TAG_BOOSTER_Q, mac_bytes)
 
 
 def parse_device_info(data):
@@ -682,11 +959,20 @@ def build_scene(protocol, mac_bytes, effect_id, brightness=50, speed=5, **kwargs
 
 
 def build_gel(protocol, mac_bytes, brightness, gel_name):
-    if protocol == "infinity":
-        return cmd_gel(mac_bytes, brightness, gel_name)
     preset = GEL_PRESETS.get(gel_name)
     if not preset:
         raise ValueError(f"Unknown gel: {gel_name}")
+    if protocol == "infinity":
+        brand, gel_num = _parse_gel_brand_num(gel_name)
+        if brand is not None:
+            if preset[0] == "hsi":
+                _, hue, sat = preset
+            else:
+                # CCT presets: send hue=0, sat=0 — firmware uses gel_num for color
+                hue, sat = 0, 0
+            return cmd_gel_native(mac_bytes, hue, sat, brightness, brand, gel_num)
+        # Unknown brand prefix — fall through to approximation
+        return cmd_gel(mac_bytes, brightness, gel_name)
     if preset[0] == "cct":
         _, temp_k, gm = preset
         return build_cct(protocol, mac_bytes, brightness, temp_k, gm)
@@ -1458,9 +1744,96 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             await client.write_gatt_char(WRITE_UUID,
                 build_cct(proto, mac_bytes, b, 5000), response=False)
         print("  Demo done.")
+    elif cmd == "find":
+        pkt = cmd_find(mac_bytes)
+        await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+        print("  Find: flashing light")
+    elif cmd == "battery":
+        result = {}
+        def _on_battery(sender, data):
+            if len(data) >= 10 and data[0] == PREFIX:
+                val = data[9] if len(data) > 9 else None
+                if val is not None:
+                    if val == 0xF0:
+                        result["battery"] = "charging"
+                    else:
+                        result["battery"] = f"{val}%"
+        await client.start_notify(NOTIFY_UUID, _on_battery)
+        await asyncio.sleep(0.1)
+        pkt = cmd_battery(mac_bytes)
+        await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+        await asyncio.sleep(1.0)
+        await client.stop_notify(NOTIFY_UUID)
+        if result:
+            print(f"  Battery: {result['battery']}")
+        else:
+            print("  Battery: no response (may not have battery)")
+    elif cmd == "fan" and len(parts) >= 2:
+        subcmd = parts[1].lower()
+        if subcmd == "query":
+            result = {}
+            def _on_fan(sender, data):
+                if len(data) >= 10 and data[0] == PREFIX:
+                    result["raw"] = fmt_hex(data)
+            await client.start_notify(NOTIFY_UUID, _on_fan)
+            await asyncio.sleep(0.1)
+            pkt = cmd_temp_fan_query(mac_bytes)
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+            await asyncio.sleep(1.0)
+            await client.stop_notify(NOTIFY_UUID)
+            if result:
+                print(f"  Fan/Temp: {result['raw']}")
+            else:
+                print("  Fan/Temp: no response")
+        else:
+            try:
+                mode = int(subcmd)
+            except ValueError:
+                mode = {"off": 0, "auto": 1, "low": 2, "high": 3}.get(subcmd)
+                if mode is None:
+                    print(f"  Unknown fan mode: {subcmd} (use off/auto/low/high or 0-3)")
+                    return "continue"
+            pkt = cmd_fan_set(mac_bytes, mode)
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+            modes = {0: "off", 1: "auto", 2: "low", 3: "high"}
+            print(f"  Fan: {modes.get(mode, str(mode))}")
+    elif cmd == "booster" and len(parts) >= 2:
+        if parts[1].lower() == "query":
+            result = {}
+            def _on_boost(sender, data):
+                if len(data) >= 10 and data[0] == PREFIX:
+                    result["raw"] = fmt_hex(data)
+            await client.start_notify(NOTIFY_UUID, _on_boost)
+            await asyncio.sleep(0.1)
+            pkt = cmd_booster_query(mac_bytes)
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+            await asyncio.sleep(1.0)
+            await client.stop_notify(NOTIFY_UUID)
+            if result:
+                print(f"  Booster: {result['raw']}")
+            else:
+                print("  Booster: no response")
+        else:
+            enable = parts[1].lower() in ("on", "1", "true", "enable")
+            pkt = cmd_booster(mac_bytes, enable)
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+            print(f"  Booster: {'enabled' if enable else 'disabled'}")
+    elif cmd == "rgbcw" and len(parts) >= 7:
+        bri = int(parts[1])
+        r, g, b_val, cold, warm = int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5]), int(parts[6])
+        pkt = cmd_rgbcw(mac_bytes, bri, r, g, b_val, cold, warm)
+        await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+        print(f"  RGBCW: bri={bri}% R={r} G={g} B={b_val} cold={cold} warm={warm}")
+    elif cmd == "xy" and len(parts) >= 4:
+        bri = int(parts[1])
+        x, y = float(parts[2]), float(parts[3])
+        pkt = cmd_xy(mac_bytes, bri, x, y)
+        await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+        print(f"  XY: bri={bri}% x={x:.4f} y={y:.4f}")
     elif cmd == "help":
         print("  on / off / bri / temp / hue / cct / hsi / scene / gel / source / color / random / raw")
         print("  fade / fade-color / fade-temp / fade-hue / strobe / demo / info")
+        print("  rgbcw / xy / find / battery / fan / booster")
         print("  preset <name> / preset save/delete/list")
         print("  group save/delete/list / groups")
         print("  sleep <s> / status / effects / gels / sources / colors / presets / quit")
@@ -1483,6 +1856,10 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             "raw": "raw <hex bytes>",
             "group": "group save <name> <light1> ... | group delete <name> | group list",
             "preset": "preset <name> | preset save <name> cct/hsi ... | preset delete <name>",
+            "rgbcw": "rgbcw <brightness> <R> <G> <B> <cold> <warm>",
+            "xy": "xy <brightness> <x> <y>",
+            "fan": "fan <off|auto|low|high|query>",
+            "booster": "booster <on|off|query>",
         }
         if cmd in usage:
             print(f"  Usage: {usage[cmd]}")
@@ -1494,10 +1871,13 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
 
 # --- CLI ---
 
-def _add_light_args(p):
-    p.add_argument("--light", required=True,
+def _add_light_args(p, light_required=True, add_ch=True):
+    p.add_argument("--light", required=light_required,
                    help="BLE address/UUID, or 'all' for all lights")
     p.add_argument("--name", help="BLE device name (from scan)")
+    if add_ch:
+        p.add_argument("--ch", type=int, default=None,
+                       help="channel number (for channel-addressed group control)")
 
 
 def build_parser():
@@ -1648,6 +2028,53 @@ def build_parser():
     sub.add_parser("gels", help="list all gel presets")
     sub.add_parser("sources", help="list all light source presets")
     sub.add_parser("colors", help="list all named colors")
+
+    # --- Channel management ---
+    p_ch = sub.add_parser("channel", help="manage channel-based group control",
+        epilog="Assign lights to channels, then control via --ch flag on any command")
+    p_ch_sub = p_ch.add_subparsers(dest="channel_cmd")
+    p_ch_assign = p_ch_sub.add_parser("assign", help="assign a light to a channel")
+    _add_light_args(p_ch_assign, add_ch=False)
+    p_ch_assign.add_argument("--ch", type=int, required=True, help="channel number (1-255)")
+    p_ch_assign.add_argument("--network-id", type=int, default=None,
+                             help="network ID (auto-generated if not set)")
+    p_ch_remove = p_ch_sub.add_parser("remove", help="remove a light from a channel")
+    _add_light_args(p_ch_remove, add_ch=False)
+    p_ch_remove.add_argument("--ch", type=int, required=True, help="channel to remove from")
+    p_ch_reset = p_ch_sub.add_parser("reset", help="delete all network assignments for a light")
+    _add_light_args(p_ch_reset, add_ch=False)
+    p_ch_sub.add_parser("list", help="list current channel assignments")
+
+    # --- New control commands ---
+    p_find = sub.add_parser("find", help="flash a light to locate it")
+    _add_light_args(p_find)
+
+    p_battery = sub.add_parser("battery", help="query battery level")
+    _add_light_args(p_battery)
+
+    p_fan = sub.add_parser("fan", help="query or set fan mode")
+    _add_light_args(p_fan)
+    p_fan.add_argument("--mode", type=int, default=None, help="fan mode to set (omit to query)")
+
+    p_rgbcw = sub.add_parser("rgbcw", help="set direct RGBCW color")
+    _add_light_args(p_rgbcw)
+    p_rgbcw.add_argument("--brightness", type=int, required=True, help="0-100")
+    p_rgbcw.add_argument("--red", type=int, default=0, help="0-255")
+    p_rgbcw.add_argument("--green", type=int, default=0, help="0-255")
+    p_rgbcw.add_argument("--blue", type=int, default=0, help="0-255")
+    p_rgbcw.add_argument("--cold", type=int, default=0, help="cold white 0-255")
+    p_rgbcw.add_argument("--warm", type=int, default=0, help="warm white 0-255")
+
+    p_booster = sub.add_parser("booster", help="enable/disable booster mode")
+    _add_light_args(p_booster)
+    p_booster.add_argument("--mode", choices=["on", "off", "query"], default="query",
+                           help="on/off/query (default: query)")
+
+    p_xy = sub.add_parser("xy", help="set CIE xy color coordinate")
+    _add_light_args(p_xy)
+    p_xy.add_argument("--brightness", type=int, required=True, help="0-100")
+    p_xy.add_argument("--x", type=float, required=True, help="CIE x (0.0-1.0)")
+    p_xy.add_argument("--y", type=float, required=True, help="CIE y (0.0-1.0)")
 
     return parser
 
@@ -2026,12 +2453,18 @@ async def main():
 
     proto_arg = args.protocol  # "auto" or explicit; resolved per-light in connect_and_run
 
+    ch = getattr(args, "ch", None)
+
     if args.command in ("on", "off"):
         on = args.command == "on"
         print(f"Power {'ON' if on else 'OFF'}...")
 
         async def do_power(client, mac_bytes, verbose, proto):
-            pkt = build_power(proto, mac_bytes, on=on)
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_power(nid, ch, on=on)
+            else:
+                pkt = build_power(proto, mac_bytes, on=on)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2043,7 +2476,11 @@ async def main():
         print(f"CCT: brightness={args.brightness}%, temp={args.temp}K, gm={args.gm}")
 
         async def do_cct(client, mac_bytes, verbose, proto):
-            pkt = build_cct(proto, mac_bytes, args.brightness, args.temp, args.gm)
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_cct(nid, ch, args.brightness, args.temp, args.gm)
+            else:
+                pkt = build_cct(proto, mac_bytes, args.brightness, args.temp, args.gm)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2068,7 +2505,11 @@ async def main():
         print(f"HSI: hue={hue}, sat={sat}%, brightness={bri}%")
 
         async def do_hsi(client, mac_bytes, verbose, proto):
-            pkt = build_hsi(proto, mac_bytes, hue, sat, bri)
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_hsi(nid, ch, hue, sat, bri)
+            else:
+                pkt = build_hsi(proto, mac_bytes, hue, sat, bri)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2084,13 +2525,20 @@ async def main():
         print(f"Scene: {effect_name}, brightness={args.brightness}%, speed={args.speed}")
 
         async def do_scene(client, mac_bytes, verbose, proto):
-            # Power cycle required before scene on Infinity lights
-            off_pkt = build_power(proto, mac_bytes, on=False)
-            on_pkt = build_power(proto, mac_bytes, on=True)
-            scene_pkt = build_scene(proto, mac_bytes, effect_id, args.brightness, args.speed,
-                                    temp=args.temp, hue=args.hue, sat=args.sat,
-                                    gm=args.gm, color=args.color, sparks=args.sparks,
-                                    brr_hi=getattr(args, "brr_hi", None))
+            scene_kwargs = dict(temp=args.temp, hue=args.hue, sat=args.sat,
+                                gm=args.gm, color=args.color, sparks=args.sparks,
+                                brr_hi=getattr(args, "brr_hi", None))
+            if ch is not None:
+                nid = _get_network_id()
+                off_pkt = ch_cmd_power(nid, ch, on=False)
+                on_pkt = ch_cmd_power(nid, ch, on=True)
+                scene_pkt = ch_cmd_scene(nid, ch, effect_id, args.brightness, args.speed,
+                                         **scene_kwargs)
+            else:
+                off_pkt = build_power(proto, mac_bytes, on=False)
+                on_pkt = build_power(proto, mac_bytes, on=True)
+                scene_pkt = build_scene(proto, mac_bytes, effect_id, args.brightness, args.speed,
+                                        **scene_kwargs)
             if verbose:
                 print(f"  TX (off):   {fmt_hex(off_pkt)}")
                 print(f"  TX (on):    {fmt_hex(on_pkt)}")
@@ -2117,7 +2565,25 @@ async def main():
             print(f"GEL {gel_name}: HSI hue={preset[1]}, sat={preset[2]}%, brightness={args.brightness}%")
 
         async def do_gel(client, mac_bytes, verbose, proto):
-            pkt = build_gel(proto, mac_bytes, args.brightness, gel_name)
+            if ch is not None:
+                nid = _get_network_id()
+                brand, gel_num = _parse_gel_brand_num(gel_name)
+                if brand is not None:
+                    if preset[0] == "hsi":
+                        _, hue, sat = preset
+                    else:
+                        hue, sat = 0, 0
+                    pkt = ch_cmd_gel_native(nid, ch, hue, sat, args.brightness, brand, gel_num)
+                else:
+                    # Unknown brand — use CCT/HSI via channel
+                    if preset[0] == "cct":
+                        _, temp_k, gm = preset
+                        pkt = ch_cmd_cct(nid, ch, args.brightness, temp_k, gm)
+                    else:
+                        _, hue, sat = preset
+                        pkt = ch_cmd_hsi(nid, ch, hue, sat, args.brightness)
+            else:
+                pkt = build_gel(proto, mac_bytes, args.brightness, gel_name)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2136,7 +2602,11 @@ async def main():
         print(f"Source: {desc}, brightness={bri}%")
 
         async def do_source(client, mac_bytes, verbose, proto):
-            pkt = build_cct(proto, mac_bytes, bri, temp, gm)
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_cct(nid, ch, bri, temp, gm)
+            else:
+                pkt = build_cct(proto, mac_bytes, bri, temp, gm)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2155,7 +2625,11 @@ async def main():
         print(f"Color: {args.color_name} (hue={hue}, sat={sat}%), brightness={bri}%")
 
         async def do_color(client, mac_bytes, verbose, proto):
-            pkt = build_hsi(proto, mac_bytes, hue, sat, bri)
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_hsi(nid, ch, hue, sat, bri)
+            else:
+                pkt = build_hsi(proto, mac_bytes, hue, sat, bri)
             if verbose:
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2402,10 +2876,12 @@ async def main():
                     "strobe", "random", "raw", "preset", "group", "groups",
                     "status", "demo", "info", "sleep", "effects", "gels",
                     "sources", "colors", "presets", "help", "quit",
+                    "find", "battery", "fan", "booster", "rgbcw", "xy",
                 ]
                 # Add effect names, color names, source names for completion
                 _REPL_WORDS = _REPL_CMDS + list(EFFECTS.keys()) + list(NAMED_COLORS.keys()) + \
-                    list(LIGHT_SOURCES.keys()) + list(GEL_PRESETS.keys()) + ["save", "delete", "list"]
+                    list(LIGHT_SOURCES.keys()) + list(GEL_PRESETS.keys()) + \
+                    ["save", "delete", "list", "query", "off", "auto", "low", "high", "on", "enable", "disable"]
                 def _completer(text, state):
                     matches = [w for w in _REPL_WORDS if w.startswith(text.lower())]
                     return matches[state] if state < len(matches) else None
@@ -2448,6 +2924,12 @@ async def main():
             print("  status                        - query power state")
             print("  demo [bri]                    - cycle through modes")
             print("  info                          - show device details")
+            print("  rgbcw <bri> <R> <G> <B> <cold> <warm> - direct RGBCW (e.g., rgbcw 80 255 0 0 0 0)")
+            print("  xy <bri> <x> <y>              - CIE xy color (e.g., xy 80 0.3127 0.3290)")
+            print("  find                          - flash light to locate it")
+            print("  battery                       - query battery level")
+            print("  fan <off|auto|low|high|query> - fan control")
+            print("  booster <on|off|query>        - booster mode")
             print("  group save/delete/list        - manage light groups")
             print("  effects / gels / sources / colors / presets / groups - list options")
             print()
@@ -2498,18 +2980,22 @@ async def main():
 
         async def do_fade(client, mac_bytes, verbose, proto):
             steps = max(5, int(dur * 20))
+            nid = _get_network_id() if ch is not None else None
             for i in range(steps + 1):
                 t = i / steps
                 bri = int(bri1 + (bri2 - bri1) * t)
                 if hue1 is not None and hue2 is not None:
                     hdiff = (hue2 - hue1 + 540) % 360 - 180
                     hue = int(hue1 + hdiff * t) % 360
-                    pkt = build_hsi(proto, mac_bytes, hue, sat, bri)
+                    pkt = ch_cmd_hsi(nid, ch, hue, sat, bri) if ch is not None \
+                        else build_hsi(proto, mac_bytes, hue, sat, bri)
                 elif temp2 is not None:
                     temp = int(temp1 + (temp2 - temp1) * t)
-                    pkt = build_cct(proto, mac_bytes, bri, temp)
+                    pkt = ch_cmd_cct(nid, ch, bri, temp) if ch is not None \
+                        else build_cct(proto, mac_bytes, bri, temp)
                 else:
-                    pkt = build_cct(proto, mac_bytes, bri, temp1)
+                    pkt = ch_cmd_cct(nid, ch, bri, temp1) if ch is not None \
+                        else build_cct(proto, mac_bytes, bri, temp1)
                 if verbose and i % 10 == 0:
                     print(f"  TX: {fmt_hex(pkt)}")
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -2542,21 +3028,27 @@ async def main():
 
         async def do_strobe(client, mac_bytes, verbose, proto):
             half = 0.5 / rate
+            nid = _get_network_id() if ch is not None else None
             if color_arg:
                 cval = resolve_color(color_arg)
                 if cval:
-                    on_pkt = build_hsi(proto, mac_bytes, cval[0], cval[1], bri)
+                    on_pkt = ch_cmd_hsi(nid, ch, cval[0], cval[1], bri) if ch is not None \
+                        else build_hsi(proto, mac_bytes, cval[0], cval[1], bri)
                 else:
                     try:
                         temp = int(color_arg)
-                        on_pkt = build_cct(proto, mac_bytes, bri, temp)
+                        on_pkt = ch_cmd_cct(nid, ch, bri, temp) if ch is not None \
+                            else build_cct(proto, mac_bytes, bri, temp)
                     except ValueError:
                         print(f"Unknown color/temp: {color_arg}")
                         return
             else:
-                on_pkt = build_cct(proto, mac_bytes, bri, 5600)
-            off_pkt = build_power(proto, mac_bytes, on=False)
-            on_power = build_power(proto, mac_bytes, on=True)
+                on_pkt = ch_cmd_cct(nid, ch, bri, 5600) if ch is not None \
+                    else build_cct(proto, mac_bytes, bri, 5600)
+            off_pkt = ch_cmd_power(nid, ch, on=False) if ch is not None \
+                else build_power(proto, mac_bytes, on=False)
+            on_power = ch_cmd_power(nid, ch, on=True) if ch is not None \
+                else build_power(proto, mac_bytes, on=True)
             for i in range(count):
                 await client.write_gatt_char(WRITE_UUID, on_power, response=False)
                 await asyncio.sleep(0.02)
@@ -2607,6 +3099,216 @@ async def main():
 
         await run_command(address, device_name, do_batch, args.verbose, use_all, proto_arg)
         print("Batch complete.")
+
+    elif args.command == "channel":
+        channels = _cache.get("channels", {})
+        if args.channel_cmd == "assign":
+            nid = _get_network_id(getattr(args, "network_id", None))
+            ch_num = args.ch
+            print(f"Assigning to channel {ch_num} (network {nid})...")
+
+            async def do_ch_assign(client, mac_bytes, verbose, proto):
+                pkt = cmd_channel_assign(mac_bytes, ch_num, nid)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+                mac_str = ":".join(f"{b:02X}" for b in mac_bytes)
+                _cache.setdefault("channels", {})[mac_str] = {
+                    "channel": ch_num, "network_id": nid}
+                _save_cache()
+                print(f"  Assigned {mac_str} → channel {ch_num}")
+
+            await run_command(address, device_name, do_ch_assign, args.verbose, use_all, proto_arg)
+            print("Done.")
+
+        elif args.channel_cmd == "remove":
+            ch_num = args.ch
+            print(f"Removing from channel {ch_num}...")
+
+            async def do_ch_remove(client, mac_bytes, verbose, proto):
+                pkt = cmd_channel_remove(mac_bytes, ch_num)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+                mac_str = ":".join(f"{b:02X}" for b in mac_bytes)
+                _cache.get("channels", {}).pop(mac_str, None)
+                _save_cache()
+                print(f"  Removed {mac_str} from channel {ch_num}")
+
+            await run_command(address, device_name, do_ch_remove, args.verbose, use_all, proto_arg)
+            print("Done.")
+
+        elif args.channel_cmd == "reset":
+            print("Resetting network assignments...")
+
+            async def do_ch_reset(client, mac_bytes, verbose, proto):
+                pkt = cmd_network_delete(mac_bytes)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+                mac_str = ":".join(f"{b:02X}" for b in mac_bytes)
+                _cache.get("channels", {}).pop(mac_str, None)
+                _save_cache()
+                print(f"  Reset network for {mac_str}")
+
+            await run_command(address, device_name, do_ch_reset, args.verbose, use_all, proto_arg)
+            print("Done.")
+
+        elif args.channel_cmd == "list":
+            if not channels:
+                print("No channel assignments. Use 'channel assign' first.")
+            else:
+                nid = _cache.get("network_id", "?")
+                print(f"Channel assignments (network {nid}):\n")
+                for mac, info in sorted(channels.items()):
+                    print(f"  {mac}  → channel {info['channel']}")
+        else:
+            print("Usage: neewer.py channel {assign|remove|reset|list}")
+
+    elif args.command == "find":
+        print("Flashing light to locate...")
+
+        async def do_find(client, mac_bytes, verbose, proto):
+            pkt = cmd_find(mac_bytes)
+            if verbose:
+                print(f"  TX: {fmt_hex(pkt)}")
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+
+        await run_command(address, device_name, do_find, args.verbose, use_all, proto_arg)
+        print("Done.")
+
+    elif args.command == "battery":
+        async def do_battery(client, mac_bytes, verbose, proto):
+            responses = []
+
+            def on_notify(sender, data):
+                responses.append(bytes(data))
+
+            await client.start_notify(NOTIFY_UUID, on_notify)
+            pkt = cmd_battery(mac_bytes)
+            if verbose:
+                print(f"  TX: {fmt_hex(pkt)}")
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+            await asyncio.sleep(0.5)
+            await client.stop_notify(NOTIFY_UUID)
+
+            for resp in responses:
+                if verbose:
+                    print(f"  RX: {fmt_hex(resp)}")
+                if len(resp) >= 11 and resp[1] == 0x05:
+                    level = resp[9] & 0xFF
+                    if level == 0xF0:
+                        print("  Battery: charging")
+                    else:
+                        print(f"  Battery: {level}%")
+
+        await run_command(address, device_name, do_battery, args.verbose, use_all, proto_arg)
+
+    elif args.command == "fan":
+        if args.mode is not None:
+            print(f"Setting fan mode to {args.mode}...")
+
+            async def do_fan_set(client, mac_bytes, verbose, proto):
+                pkt = cmd_fan_set(mac_bytes, args.mode)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+
+            await run_command(address, device_name, do_fan_set, args.verbose, use_all, proto_arg)
+            print("Done.")
+        else:
+            async def do_fan_query(client, mac_bytes, verbose, proto):
+                responses = []
+
+                def on_notify(sender, data):
+                    responses.append(bytes(data))
+
+                await client.start_notify(NOTIFY_UUID, on_notify)
+                pkt = cmd_temp_fan_query(mac_bytes)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+                await asyncio.sleep(0.5)
+                await client.stop_notify(NOTIFY_UUID)
+
+                if responses:
+                    for resp in responses:
+                        print(f"  RX: {fmt_hex(resp)}")
+                else:
+                    print("  No response (command may not be supported)")
+
+            await run_command(address, device_name, do_fan_query, args.verbose, use_all, proto_arg)
+
+    elif args.command == "booster":
+        if args.mode in ("on", "off"):
+            enable = args.mode == "on"
+            print(f"Booster {'ON' if enable else 'OFF'}...")
+
+            async def do_booster(client, mac_bytes, verbose, proto):
+                pkt = cmd_booster(mac_bytes, enable=enable)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+
+            await run_command(address, device_name, do_booster, args.verbose, use_all, proto_arg)
+            print("Done.")
+        else:
+            async def do_booster_query(client, mac_bytes, verbose, proto):
+                responses = []
+
+                def on_notify(sender, data):
+                    responses.append(bytes(data))
+
+                await client.start_notify(NOTIFY_UUID, on_notify)
+                pkt = cmd_booster_query(mac_bytes)
+                if verbose:
+                    print(f"  TX: {fmt_hex(pkt)}")
+                await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+                await asyncio.sleep(0.5)
+                await client.stop_notify(NOTIFY_UUID)
+
+                if responses:
+                    for resp in responses:
+                        print(f"  RX: {fmt_hex(resp)}")
+                else:
+                    print("  No response (command may not be supported)")
+
+            await run_command(address, device_name, do_booster_query, args.verbose, use_all, proto_arg)
+
+    elif args.command == "rgbcw":
+        r, g, b = args.red, args.green, args.blue
+        bri = args.brightness
+        print(f"RGBCW: R={r} G={g} B={b} cold={args.cold} warm={args.warm} bri={bri}%")
+
+        async def do_rgbcw(client, mac_bytes, verbose, proto):
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_rgbcw(nid, ch, bri, r, g, b, args.cold, args.warm)
+            else:
+                pkt = cmd_rgbcw(mac_bytes, bri, r, g, b, args.cold, args.warm)
+            if verbose:
+                print(f"  TX: {fmt_hex(pkt)}")
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+
+        await run_command(address, device_name, do_rgbcw, args.verbose, use_all, proto_arg)
+        print("Done.")
+
+    elif args.command == "xy":
+        bri = args.brightness
+        print(f"XY: x={args.x}, y={args.y}, brightness={bri}%")
+
+        async def do_xy(client, mac_bytes, verbose, proto):
+            if ch is not None:
+                nid = _get_network_id()
+                pkt = ch_cmd_xy(nid, ch, bri, args.x, args.y)
+            else:
+                pkt = cmd_xy(mac_bytes, bri, args.x, args.y)
+            if verbose:
+                print(f"  TX: {fmt_hex(pkt)}")
+            await client.write_gatt_char(WRITE_UUID, pkt, response=False)
+
+        await run_command(address, device_name, do_xy, args.verbose, use_all, proto_arg)
+        print("Done.")
 
 
 if __name__ == "__main__":

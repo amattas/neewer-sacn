@@ -688,6 +688,35 @@ def test_build_gel_protocols():
             assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
 
 
+def test_build_gel_infinity_native():
+    """Infinity gel uses native TAG 0xAD instead of CCT/HSI approximation."""
+    mac = [0x00] * 6
+    # HSI-type preset: L088 Lime Green (hue=120, sat=40)
+    pkt = neewer.build_gel("infinity", mac, 70, "L088")
+    assert pkt[1] == neewer.TAG_GEL_MAC  # 0xAD native gel
+    # brand=2 (LEE), gel_num=88
+    assert pkt[-3] == 2    # brand
+    assert pkt[-2] == 88   # gel_num
+    # CCT-type preset: R38 Rose
+    pkt2 = neewer.build_gel("infinity", mac, 70, "R38")
+    assert pkt2[1] == neewer.TAG_GEL_MAC  # native gel, not 0x90 CCT
+    assert pkt2[-3] == 1   # brand=ROSCO
+    assert pkt2[-2] == 38  # gel_num
+    # Non-infinity still uses CCT/HSI
+    pkt3 = neewer.build_gel("extended", mac, 70, "R38")
+    assert pkt3[1] == 0x87  # extended CCT
+
+
+def test_parse_gel_brand_num():
+    """Parse gel name into brand and gel number."""
+    assert neewer._parse_gel_brand_num("R38") == (1, 38)
+    assert neewer._parse_gel_brand_num("L088") == (2, 88)
+    assert neewer._parse_gel_brand_num("G325") == (1, 255)  # clamped
+    assert neewer._parse_gel_brand_num("E128") == (1, 128)
+    assert neewer._parse_gel_brand_num("R9406") == (1, 255)  # clamped
+    assert neewer._parse_gel_brand_num("") == (None, 0)
+
+
 def test_cmd_device_info():
     mac = [0xD4, 0xED, 0x61, 0xC3, 0xB7, 0x00]
     pkt = neewer.cmd_device_info(mac)
@@ -1027,6 +1056,331 @@ def test_preset_save_zero_values():
     result_good = val if val is not None else 100  # new behavior: 0 (correct!)
     assert result_bad == 100  # confirms the bug existed
     assert result_good == 0   # confirms the fix works
+
+
+# === Channel-addressed command tests ===
+
+def test_channel_cmd_envelope():
+    """Channel command: 78 TAG LEN NETID[4] CH SUBTAG PARAMS CS"""
+    pkt = neewer.channel_cmd(0x93, 0x12345678, 3, 0x87, [50, 56, 50, 4, 0])
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0x93        # TAG_CH_CCT
+    assert pkt[2] == 11          # 4 NETID + 1 CH + 1 SUBTAG + 5 params
+    # NetworkId 0x12345678 LE: 78, 56, 34, 12
+    assert pkt[3] == 0x78
+    assert pkt[4] == 0x56
+    assert pkt[5] == 0x34
+    assert pkt[6] == 0x12
+    assert pkt[7] == 3           # channel
+    assert pkt[8] == 0x87        # SUBTAG_CCT
+    assert pkt[9] == 50          # brightness
+    assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
+
+
+def test_ch_cmd_power_on():
+    pkt = neewer.ch_cmd_power(0x00000001, 1, on=True)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0x98        # TAG_CH_POWER
+    assert pkt[2] == 7           # 4 NETID + 1 CH + 1 SUBTAG + 1 param
+    assert pkt[3:7] == bytes([0x01, 0x00, 0x00, 0x00])  # NETID LE
+    assert pkt[7] == 1           # channel
+    assert pkt[8] == 0x81        # SUBTAG_POWER
+    assert pkt[9] == 0x01        # ON
+
+
+def test_ch_cmd_power_off():
+    pkt = neewer.ch_cmd_power(0x00000001, 2, on=False)
+    assert pkt[9] == 0x02        # OFF
+    assert pkt[7] == 2           # channel 2
+
+
+def test_ch_cmd_cct():
+    pkt = neewer.ch_cmd_cct(1000, 1, 80, 5600, gm=-10)
+    assert pkt[1] == 0x93        # TAG_CH_CCT
+    assert pkt[8] == 0x87        # SUBTAG_CCT
+    assert pkt[9] == 80          # brightness
+    assert pkt[10] == 56         # 5600 // 100
+    assert pkt[11] == 40         # gm -10 + 50
+    assert pkt[12] == 4          # curve
+    assert pkt[13] == 0          # dbri
+
+
+def test_ch_cmd_hsi():
+    pkt = neewer.ch_cmd_hsi(1000, 1, 240, 100, 80)
+    assert pkt[1] == 0x92        # TAG_CH_HSI
+    assert pkt[8] == 0x86        # SUBTAG_HSI
+    assert pkt[9] == 240 & 0xFF  # hue lo
+    assert pkt[10] == (240 >> 8) & 0xFF  # hue hi = 0
+    assert pkt[11] == 100        # sat
+    assert pkt[12] == 80         # brightness
+
+
+def test_ch_cmd_scene():
+    pkt = neewer.ch_cmd_scene(1000, 1, 0x0A, brightness=80, speed=7)
+    assert pkt[1] == 0x94        # TAG_CH_SCENE
+    assert pkt[8] == 0x8B        # SUBTAG_SCENE
+    assert pkt[9] == 0x0A        # cop-car effect
+
+
+# === Network management command tests ===
+
+def test_cmd_channel_assign():
+    """78 9F 0C MAC[6] 01 CH NETID[4] CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_channel_assign(mac, 3, 0x12345678)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0x9F        # TAG_CHANNEL_CONFIG
+    assert pkt[2] == 0x0C        # size = 12
+    assert list(pkt[3:9]) == mac
+    assert pkt[9] == 0x01        # action = ADD
+    assert pkt[10] == 3          # channel
+    # NETID 0x12345678 LE
+    assert pkt[11] == 0x78
+    assert pkt[12] == 0x56
+    assert pkt[13] == 0x34
+    assert pkt[14] == 0x12
+    assert len(pkt) == 16
+
+
+def test_cmd_channel_remove():
+    """78 9F 0C MAC[6] 02 CH 00 00 00 00 CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_channel_remove(mac, 5)
+    assert pkt[1] == 0x9F
+    assert pkt[9] == 0x02        # action = DELETE
+    assert pkt[10] == 5          # channel
+    assert pkt[11:15] == bytes([0, 0, 0, 0])
+    assert len(pkt) == 16
+
+
+def test_cmd_channel_set():
+    """78 8C 0B MAC[6] CH NETID[4] CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_channel_set(mac, 1, 0x00000001)
+    assert pkt[1] == 0x8C        # TAG_CHANNEL_SET
+    assert pkt[2] == 0x0B        # size = 11
+    assert pkt[9] == 1           # channel
+    assert pkt[10] == 0x01       # NETID byte 0
+    assert len(pkt) == 15
+
+
+def test_cmd_network_delete():
+    """78 9B 09 MAC[6] 02 01 00 CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_network_delete(mac)
+    assert pkt[1] == 0x9B        # TAG_NETWORK_EDIT
+    assert pkt[2] == 0x09
+    assert pkt[9] == 0x02
+    assert pkt[10] == 0x01
+    assert pkt[11] == 0x00
+    assert len(pkt) == 13
+
+
+# === Native Gel command tests ===
+
+def test_cmd_gel_native():
+    """78 AD 0D MAC[6] HUE_HI HUE_LO SAT BRI DBRI BRAND GEL CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_gel_native(mac, 240, 80, 70, brand=1, gel_num=38)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0xAD        # TAG_GEL_MAC
+    assert pkt[2] == 13          # 6 MAC + 7 params
+    assert list(pkt[3:9]) == mac
+    # Hue 240 in big-endian: 0x00, 0xF0
+    assert pkt[9] == 0x00        # hue hi
+    assert pkt[10] == 240        # hue lo
+    assert pkt[11] == 80         # sat
+    assert pkt[12] == 70         # brightness
+    assert pkt[13] == 0          # dbri
+    assert pkt[14] == 1          # brand = ROSCO
+    assert pkt[15] == 38         # gel number
+    assert len(pkt) == 17
+
+
+def test_cmd_gel_native_hue_be():
+    """Verify hue big-endian encoding (opposite of HSI little-endian)."""
+    mac = [0] * 6
+    # Hue 300 = 0x012C → HI=0x01, LO=0x2C
+    pkt = neewer.cmd_gel_native(mac, 300, 100, 100, brand=2, gel_num=1)
+    assert pkt[9] == 0x01        # hue hi
+    assert pkt[10] == 0x2C       # hue lo = 44
+
+
+def test_ch_cmd_gel_native():
+    pkt = neewer.ch_cmd_gel_native(1000, 1, 240, 80, 70, brand=1, gel_num=38)
+    assert pkt[1] == 0xAE        # TAG_GEL_CH
+
+
+# === RGBCW command tests ===
+
+def test_cmd_rgbcw():
+    """78 A9 0E MAC[6] A8 BRI R G B C W DBRI CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_rgbcw(mac, 80, 255, 128, 0, 100, 50)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0xA9        # TAG_RGBCW_MAC
+    assert pkt[9] == 0xA8        # SUBTAG_RGBCW
+    assert pkt[10] == 80         # brightness
+    assert pkt[11] == 255        # red
+    assert pkt[12] == 128        # green
+    assert pkt[13] == 0          # blue
+    assert pkt[14] == 100        # cold
+    assert pkt[15] == 50         # warm
+    assert pkt[16] == 0          # dbri
+
+
+def test_ch_cmd_rgbcw():
+    pkt = neewer.ch_cmd_rgbcw(1000, 1, 80, 255, 0, 0, 0, 0)
+    assert pkt[1] == 0xAA        # TAG_RGBCW_CH
+    assert pkt[8] == 0xA8        # SUBTAG_RGBCW
+
+
+def test_cmd_rgbcw_clamp():
+    mac = [0] * 6
+    pkt = neewer.cmd_rgbcw(mac, 150, 300, -10, 0, 0, 0)
+    assert pkt[10] == 100        # brightness clamped to 100
+    assert pkt[11] == 255        # red clamped to 255
+    assert pkt[12] == 0          # green clamped to 0
+
+
+# === XY Color Coordinate tests ===
+
+def test_encode_xy():
+    """0.3127 → [0x0C, 0x37] (3127 as big-endian)."""
+    result = neewer._encode_xy(0.3127)
+    assert result == [0x0C, 0x37]  # 3127 = 0x0C37
+
+
+def test_encode_xy_zero():
+    result = neewer._encode_xy(0.0000)
+    assert result == [0x00, 0x00]
+
+
+def test_cmd_xy():
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_xy(mac, 80, 0.3127, 0.3290)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0xB7        # TAG_XY_MAC
+    assert pkt[2] == 12          # 6 MAC + 6 params (no subtag)
+    assert pkt[9] == 80          # brightness
+    # x = 0.3127 → [0x0C, 0x37]
+    assert pkt[10] == 0x0C
+    assert pkt[11] == 0x37
+    # y = 0.3290 → [0x0C, 0xDA]  (3290 = 0x0CDA)
+    assert pkt[12] == 0x0C
+    assert pkt[13] == 0xDA
+
+
+def test_ch_cmd_xy():
+    pkt = neewer.ch_cmd_xy(1000, 1, 80, 0.3127, 0.3290)
+    assert pkt[1] == 0xB8        # TAG_XY_CH
+
+
+# === Utility command tests ===
+
+def test_cmd_find():
+    """78 99 06 MAC[6] CS"""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_find(mac)
+    assert pkt[0] == 0x78
+    assert pkt[1] == 0x99        # TAG_FIND
+    assert pkt[2] == 6           # size = 6 (just MAC)
+    assert list(pkt[3:9]) == mac
+    assert len(pkt) == 10
+
+
+def test_cmd_battery():
+    """78 95 06 MAC[6] CS — same as hw_info."""
+    mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+    pkt = neewer.cmd_battery(mac)
+    assert pkt[1] == 0x95
+    assert pkt[2] == 6
+    assert len(pkt) == 10
+
+
+def test_cmd_temp_fan_query():
+    mac = [0] * 6
+    pkt = neewer.cmd_temp_fan_query(mac)
+    assert pkt[1] == 0xB3
+    assert pkt[2] == 6
+    assert len(pkt) == 10
+
+
+def test_cmd_fan_set():
+    mac = [0] * 6
+    pkt = neewer.cmd_fan_set(mac, 2)
+    assert pkt[1] == 0xB4
+    assert pkt[2] == 7           # 6 MAC + 1 param
+    assert pkt[9] == 2           # fan mode
+    assert len(pkt) == 11
+
+
+def test_cmd_booster():
+    mac = [0] * 6
+    pkt = neewer.cmd_booster(mac, enable=True)
+    assert pkt[1] == 0xAB
+    assert pkt[9] == 0x01
+    pkt2 = neewer.cmd_booster(mac, enable=False)
+    assert pkt2[9] == 0x02
+
+
+def test_cmd_booster_query():
+    mac = [0] * 6
+    pkt = neewer.cmd_booster_query(mac)
+    assert pkt[1] == 0xAC
+    assert len(pkt) == 10
+
+
+# === Cross-verify: channel vs MAC command parity ===
+
+def test_channel_vs_mac_cct_parity():
+    """Channel CCT and MAC CCT should produce same SUBTAG and params."""
+    mac = [0] * 6
+    mac_pkt = neewer.cmd_cct(mac, 80, 5600, -10)
+    ch_pkt = neewer.ch_cmd_cct(1, 1, 80, 5600, -10)
+    # SUBTAG should match
+    assert mac_pkt[9] == ch_pkt[8] == 0x87
+    # Params should match (brightness, cct, gm, curve)
+    assert mac_pkt[10:14] == ch_pkt[9:13]
+
+
+def test_channel_vs_mac_hsi_parity():
+    mac = [0] * 6
+    mac_pkt = neewer.cmd_hsi(mac, 240, 100, 80)
+    ch_pkt = neewer.ch_cmd_hsi(1, 1, 240, 100, 80)
+    assert mac_pkt[9] == ch_pkt[8] == 0x86
+    # hue_lo, hue_hi, sat, bri, 0x00
+    assert mac_pkt[10:15] == ch_pkt[9:14]
+
+
+def test_channel_vs_mac_power_parity():
+    mac = [0] * 6
+    mac_pkt = neewer.cmd_power(mac, on=True)
+    ch_pkt = neewer.ch_cmd_power(1, 1, on=True)
+    assert mac_pkt[9] == ch_pkt[8] == 0x81
+    assert mac_pkt[10] == ch_pkt[9] == 0x01
+
+
+def test_ch_cmd_scene_int_loop():
+    """Channel-addressed INT Loop (0x0E) uses special sub-mode encoding."""
+    pkt = neewer.ch_cmd_scene(1, 1, 0x0E, brightness=80, speed=5, hue=120)
+    assert pkt[0] == 0x78
+    # Format: 78 TAG SIZE NETID[4] CH SUBTAG PARAMS CS
+    # Effect ID is at index 9 (first byte of params, after subtag at 8)
+    assert pkt[8] == neewer.SUBTAG_SCENE  # 0x8B
+    assert pkt[9] == 0x0E  # INT Loop effect ID
+
+
+def test_channel_vs_mac_gel_native_parity():
+    """Channel and MAC gel native share the same SUBTAG."""
+    mac = [0] * 6
+    mac_pkt = neewer.cmd_gel_native(mac, 120, 80, 70, 1, 38)
+    ch_pkt = neewer.ch_cmd_gel_native(1, 1, 120, 80, 70, 1, 38)
+    # Both use gel subtag
+    assert mac_pkt[9] == ch_pkt[8]  # subtag bytes match
+    # Brand and gel_num should match in payload
+    assert mac_pkt[-3] == ch_pkt[-3]  # brand
+    assert mac_pkt[-2] == ch_pkt[-2]  # gel_num
 
 
 if __name__ == "__main__":

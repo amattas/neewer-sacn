@@ -25,19 +25,34 @@ python neewer.py cct --light 0 --brightness 80 --temp 5600           # auto-dete
 python neewer.py --protocol extended cct --light 0 --brightness 80 --temp 5600
 python neewer.py --protocol legacy on --light 0
 
-# All 26 commands
-scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo, interactive, batch, raw, info, preset, group, monitor, effects, gels, sources, colors
+# Channel-addressed group control (--ch flag)
+python neewer.py channel assign --light 0 --ch 1         # assign light to channel
+python neewer.py cct --light 0 --ch 1 --brightness 80 --temp 5600  # send via channel
+python neewer.py on --ch 1 --light 0                     # power via channel
+
+# New commands from APK discovery
+python neewer.py find --light 0                          # flash light to locate
+python neewer.py battery --light 0                       # query battery level
+python neewer.py rgbcw --light 0 --brightness 80 --red 255 --green 0 --blue 128
+python neewer.py xy --light 0 --brightness 80 --x 0.3127 --y 0.3290
+python neewer.py fan --light 0                           # query temp/fan
+python neewer.py fan --light 0 --mode 2                  # set fan mode
+
+# All 31 CLI subcommands
+scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo, interactive, batch, raw, info, preset, group, monitor, effects, gels, sources, colors, channel, find, battery, fan, booster, rgbcw, xy
+# REPL-only session commands: bri, temp, hue, fade-color, fade-temp, fade-hue, random, find, battery, fan, booster, rgbcw, xy
 ```
 
 ## sACN Bridge
 
-`neewer_sacn.py` bridges sACN (E1.31) DMX data to BLE lights. Each light gets a 10-channel DMX footprint matching the Neewer DMX specs.
+`neewer_sacn.py` bridges sACN (E1.31) DMX data to BLE lights. Each light gets a 10-channel DMX footprint matching the Neewer DMX specs. Supports 4 modes: CCT (0-31), HSI (32-63), FX (64-95), GEL (96-127), and blackout (128+).
 
 ```bash
-python neewer_sacn.py                       # auto-scan, universe 1, start ch 1
-python neewer_sacn.py -u 2 -s 11           # universe 2, first light at ch 11
-python neewer_sacn.py --list-channels       # show channel map and exit
-python neewer_sacn.py --verbose             # debug output for every DMX→BLE translation
+python neewer_sacn.py                           # auto-scan, universe 1, start ch 1
+python neewer_sacn.py -u 2 -s 11               # universe 2, first light at ch 11
+python neewer_sacn.py --channel-mode            # use channel broadcasting (1 BLE conn)
+python neewer_sacn.py --list-channels           # show channel map and exit
+python neewer_sacn.py --verbose                 # debug output for every DMX→BLE translation
 ```
 
 ## Tests
@@ -46,7 +61,7 @@ python neewer_sacn.py --verbose             # debug output for every DMX→BLE t
 /opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest test_protocol.py -v
 ```
 
-91 tests (77 protocol + 14 bridge) covering: checksum, MAC parsing, all 3 protocol variants (Infinity, Extended Legacy, Legacy), 18 scene effects with kwargs, 40 gel presets, 26 named colors + hex codes, builder functions, alias resolution, model detection, protocol auto-detection, light sources, groups, query commands (power, device info, hw_info, channel), device info parsing (PL60C + TL120C multi-fragment), gel cross-protocol + partial matching, CLI parser, product code dedup, scan order resolution, fragment reassembly, INT Loop sub-modes, hue wrap-around interpolation, firmware version parsing, scene kwargs build/override, hex-to-HSI conversion, error isolation (ConnectionError), hue 0-359 clamping, preset value preservation. Extended legacy tests verified against real BLE packet captures.
+135 tests (110 protocol + 25 bridge) covering all of the above plus: channel command envelope, channel power/CCT/HSI/scene builders, channel-vs-MAC parity (including gel native), network management (assign/remove/set/delete), native gel (big-endian hue encoding, Infinity native TAG 0xAD, brand/gel_num parsing), RGBCW (direct RGB+CW control with clamping), XY color coordinate encoding, utility commands (find, battery, temp/fan, booster), channel-addressed INT Loop scene, all 18 FX sub-parameter mappings in sACN bridge.
 
 ## Protocol
 
@@ -58,6 +73,8 @@ Full spec in `docs/protocol.md`. Three protocol variants auto-detected from BLE 
 | **Extended Legacy** | `78 TAG LEN PARAMS CS` (18 effects, GM) | Model DB (GL1C, RGB168, CL124) |
 | **Legacy** | `78 TAG LEN PARAMS CS` (9 effects, no GM) | Model DB (RGB660, etc.) |
 
+Infinity also supports **channel-addressed** commands for group broadcast: `78 TAG SIZE NETID[4] CH SUBTAG PARAMS CS`
+
 Key facts:
 - CHECKSUM = sum(all_bytes_except_last) & 0xFF
 - MAC not validated by PL60C (any MAC accepted, including all-zeros)
@@ -65,6 +82,10 @@ Key facts:
 - Status query: TAG `0x8E` returns power state (ON/STANDBY) via notify characteristic
 - Legacy query commands (`78 84`, `78 85`) do NOT work on Infinity lights
 - Model DB maps product codes (from NW-{code}&{suffix} names) to model info
+- Channel mode: assign lights to channel via TAG 0x9F, then control all via one BLE connection
+- Native Gel (TAG 0xAD) uses big-endian hue (opposite of HSI little-endian)
+- RGBCW (TAG 0xA9) provides direct R/G/B/Cold/Warm white control
+- XY Color (TAG 0xB7) for CIE 1931 chromaticity coordinates
 
 ## Prior Art
 

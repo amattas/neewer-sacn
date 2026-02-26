@@ -124,9 +124,103 @@ def test_mode_ranges():
     # FX: 64-95
     for v in range(64, 96):
         assert 64 <= v <= 95
+    # GEL: 96-127
+    for v in range(96, 128):
+        assert 96 <= v <= 127
     # Off: 128+
     for v in range(128, 256):
         assert v >= 128
+
+
+def test_gel_mode_index_mapping():
+    """Verify GEL mode DMX gel index → brand/num mapping."""
+    # ROSCO: indices 0-119
+    gel_idx = 38
+    assert gel_idx < 120
+    brand, num = 1, gel_idx
+    assert brand == 1 and num == 38
+
+    # LEE: indices 120-239
+    gel_idx = 128
+    assert gel_idx >= 120
+    brand, num = 2, gel_idx - 120
+    assert brand == 2 and num == 8
+
+
+def test_dmx_to_color():
+    assert neewer_sacn.dmx_to_color(0) == 0
+    assert neewer_sacn.dmx_to_color(255) == 4
+    assert neewer_sacn.dmx_to_color(128) == 2
+
+
+def test_dmx_to_sparks():
+    assert neewer_sacn.dmx_to_sparks(0) == 0
+    assert neewer_sacn.dmx_to_sparks(255) == 10
+    assert neewer_sacn.dmx_to_sparks(128) == 5
+
+
+def test_get_fx_kwargs_cop_car():
+    """Cop car effect extracts color preset from DMX +4."""
+    # DMX: [mode, bri, effect, speed, color_preset, ...]
+    dmx = (80, 200, 100, 128, 200, 0, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x0A, dmx)
+    assert "color" in kwargs
+    assert 0 <= kwargs["color"] <= 4
+
+
+def test_get_fx_kwargs_hue_flash():
+    """Hue flash extracts hue and sat from DMX +4, +5."""
+    dmx = (80, 200, 100, 128, 128, 200, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x07, dmx)
+    assert "hue" in kwargs
+    assert "sat" in kwargs
+    assert 0 <= kwargs["hue"] <= 359
+    assert 0 <= kwargs["sat"] <= 100
+
+
+def test_get_fx_kwargs_empty():
+    """Unknown effect returns empty kwargs."""
+    dmx = (80, 200, 100, 128, 128, 200, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0xFF, dmx)
+    assert kwargs == {}
+
+
+def test_get_fx_kwargs_zero_ignored():
+    """Sub-params at 0 are ignored (default values used instead)."""
+    dmx = (80, 200, 100, 128, 0, 0, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x07, dmx)
+    assert kwargs == {}  # hue=0 and sat=0 are skipped
+
+
+def test_get_fx_kwargs_music():
+    """Music effect (0x12) has no sub-params."""
+    dmx = (80, 200, 200, 128, 128, 200, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x12, dmx)
+    assert kwargs == {}
+
+
+def test_fx_subs_covers_all_effects():
+    """Every effect 0x01-0x12 has an entry in _FX_SUBS."""
+    for eid in range(0x01, 0x13):
+        assert eid in neewer_sacn._FX_SUBS, f"Effect 0x{eid:02X} missing from _FX_SUBS"
+
+
+def test_get_fx_kwargs_lightning():
+    """Lightning (0x01) extracts temp from DMX +4."""
+    dmx = (80, 200, 10, 128, 128, 0, 0, 0, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x01, dmx)
+    assert "temp" in kwargs
+    assert 2500 <= kwargs["temp"] <= 10000
+
+
+def test_get_fx_kwargs_candlelight():
+    """Candlelight (0x0B) extracts brr_hi, temp, gm, sparks."""
+    dmx = (80, 200, 100, 128, 200, 128, 100, 200, 0, 0)
+    kwargs = neewer_sacn.get_fx_kwargs(0x0B, dmx)
+    assert "brr_hi" in kwargs
+    assert "temp" in kwargs
+    assert "gm" in kwargs
+    assert "sparks" in kwargs
 
 
 if __name__ == "__main__":
