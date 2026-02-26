@@ -1,0 +1,44 @@
+# Effects with Custom Parameters
+# Usage: python neewer.py batch examples/effects-custom.batch --light 0
+# Demonstrates scene kwargs: scene <effect> <bri> <speed> key=val ...
+
+# Cop car with different color presets (0=RB, 1=RW, 2=RWB, 3=RGB, 4=RWBG)
+scene cop-car 80 5 color=0  # red+blue
+sleep 3
+scene cop-car 80 5 color=2  # red+white+blue
+sleep 3
+
+# Hue flash locked to blue
+scene hue-flash 80 5 hue=240 sat=100
+sleep 3
+
+# Hue pulse in warm orange
+scene hue-pulse 70 3 hue=30 sat=100
+sleep 3
+
+# Candlelight with high ember/sparks
+scene candlelight 60 3 sparks=9
+sleep 4
+
+# Explosion with long ember
+scene explosion 80 5 sparks=8
+sleep 3
+
+# Hue loop: warm-to-cool sweep
+scene hue-loop 70 3 hue=0 hue_hi=240
+sleep 5
+
+# CCT loop: warm tungsten to cool daylight
+scene cct-loop 60 3 cct=25 cct_hi=80
+sleep 5
+
+# Party with colored mode
+scene party 80 5 color=1
+sleep 3
+
+# Firework with mixed mode + high sparks
+scene firework 80 5 color=2 sparks=8
+sleep 4
+
+# End on neutral
+cct 70 5000

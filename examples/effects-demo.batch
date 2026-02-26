@@ -1,0 +1,39 @@
+# Effects Demo: cycle through scene effects
+# Usage: python neewer.py batch examples/effects-demo.batch --light 0
+
+# Atmospheric effects
+scene candlelight 60 5
+sleep 4
+
+scene tv-screen 50 5
+sleep 4
+
+scene lightning 80 5
+sleep 4
+
+# Action effects
+scene cop-car 80 5
+sleep 4
+
+scene explosion 70 5
+sleep 4
+
+scene firework 80 7
+sleep 4
+
+# Color effects
+scene hue-loop 70 3
+sleep 5
+
+scene party 80 5
+sleep 4
+
+# Smooth loops
+scene cct-loop 60 3
+sleep 5
+
+scene int-loop 40 3
+sleep 5
+
+# End on warm white
+cct 60 3500

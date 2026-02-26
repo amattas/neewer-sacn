@@ -1,0 +1,26 @@
+# Photo assist: cycle useful lighting setups
+# Usage: python neewer.py batch examples/photo-assist.batch --light 0 --loop 0
+
+# Studio daylight
+source daylight 80
+sleep 5
+
+# Warm portrait
+cct 70 3500 -5
+sleep 5
+
+# Cool fashion
+cct 80 6500 5
+sleep 5
+
+# Golden hour sim
+source tungsten 60
+sleep 5
+
+# High-key bright
+cct 100 5000
+sleep 5
+
+# Low-key dramatic
+cct 30 3200
+sleep 5

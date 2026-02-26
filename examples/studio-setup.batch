@@ -1,0 +1,17 @@
+# Studio lighting setup
+# Usage: python neewer.py batch examples/studio-setup.batch --light 0
+
+# Start in standby
+off
+sleep 0.5
+
+# Power on
+on
+sleep 0.5
+
+# Set to neutral daylight at moderate brightness
+source daylight 70
+sleep 1
+
+# Fine-tune: slightly warm with negative GM for better skin tones
+cct 70 5200 -5

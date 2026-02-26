@@ -1,0 +1,25 @@
+# Warm Sunset sequence
+# Usage: python neewer.py batch examples/warm-sunset.batch --light 0
+
+# Start with warm amber
+color amber 60
+sleep 3
+
+# Transition to orange
+color orange 70
+sleep 3
+
+# Deep red sunset
+color red 50
+sleep 3
+
+# Cooling twilight
+color rose 40
+sleep 3
+
+# Deep blue evening
+color indigo 30
+sleep 3
+
+# Return to warm white
+source tungsten 50

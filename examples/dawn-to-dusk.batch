@@ -1,0 +1,48 @@
+# Dawn to Dusk lighting sequence
+# Usage: python neewer.py batch examples/dawn-to-dusk.batch --light 0
+
+# Start dark
+off
+sleep 0.5
+on
+sleep 0.5
+
+# Pre-dawn warm glow
+bri 10 2500
+sleep 2
+
+# Sunrise warming
+fade-temp 2500 4000 30 3
+sleep 1
+
+# Morning daylight
+fade-temp 4000 5600 60 3
+sleep 2
+
+# Bright midday
+fade 60 100 5600 2
+sleep 3
+
+# Afternoon warmth
+fade-temp 5600 4500 80 3
+sleep 2
+
+# Golden hour
+fade-temp 4500 3000 60 4
+sleep 2
+
+# Sunset colors
+color amber 50
+sleep 2
+color orange 40
+sleep 2
+color red 30
+sleep 2
+
+# Twilight
+fade-color red indigo 25 3
+sleep 2
+
+# Night
+fade 25 5 2700 2
+sleep 1

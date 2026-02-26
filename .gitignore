@@ -1,0 +1,11 @@
+re_tools/NeewerLite/
+re_tools/NeewerLite-Python/
+re_tools/neewer_apk_src/
+*.apk
+__pycache__/
+*.pyc
+.venv/
+.neewer_cache.json
+.neewer_history
+.pytest_cache/
+.claude/
