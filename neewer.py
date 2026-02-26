@@ -2127,6 +2127,17 @@ def build_parser():
     # --- Connection visibility ---
     sub.add_parser("connections", help="show BLE connections and channel map")
 
+    # --- Scene commands ---
+    p_scene_run = sub.add_parser("scene-run", help="run a scripted or generative scene")
+    p_scene_run.add_argument("file", help="path to .yaml or .py scene file")
+    p_scene_run.add_argument("--config", dest="scene_config", default=None,
+                             help="config to target (default: active)")
+    p_scene_run.add_argument("--mic", action="store_true", help="enable audio input")
+    p_scene_run.add_argument("--device", type=int, default=None,
+                             help="audio device index")
+
+    sub.add_parser("scene-list", help="list available scenes")
+
     return parser
 
 
@@ -2497,7 +2508,7 @@ async def main():
         return
 
     # Commands that don't require --light are handled after this block
-    no_light_commands = ("config", "connections")
+    no_light_commands = ("config", "connections", "scene-run", "scene-list")
     raw_light = getattr(args, "light", None)
     config_target = getattr(args, "config_target", None)
 
@@ -3486,6 +3497,76 @@ async def main():
         import neewer_config
         store = neewer_config.ConfigStore()
         neewer_config.print_connections(store)
+
+    elif args.command == "scene-run":
+        import neewer_scenes
+        scene = neewer_scenes.load_scene(args.file)
+        print(f"Scene: {scene.name}")
+        print(f"  Type: {'generative' if scene.generative else 'scripted'}")
+        if not scene.generative:
+            print(f"  Duration: {scene.duration}s, loop: {scene.loop}")
+
+        import neewer_config
+        store = neewer_config.ConfigStore()
+        cfg_name = args.scene_config or store.active
+        if not cfg_name:
+            print("ERROR: No config specified and no active config set.")
+            print("Use: neewer.py config create <name> && neewer.py config use <name>")
+            sys.exit(1)
+
+        targets = store.resolve_targets(cfg_name)
+        nid = store.get_network_id(cfg_name)
+        relay_role = store.get_relay_role(cfg_name)
+        if not relay_role:
+            print("ERROR: Config has no lights assigned.")
+            sys.exit(1)
+        relay_device = store.configs[cfg_name]["lights"][relay_role]["device"]
+        relay_addr, relay_dname = _resolve_light_alias(relay_device)
+
+        print(f"  Config: {cfg_name} ({len(targets)} lights)")
+        print(f"  Relay: {relay_role}")
+        print("Connecting...")
+
+        async def run_scene(client, mac_bytes, verbose, proto):
+            lights = {}
+            for role, device, ch in targets:
+                lights[role] = neewer_scenes.BLELight(
+                    client, nid, ch, proto, mac_bytes, WRITE_UUID)
+
+            audio_source = None
+            if getattr(args, "mic", False):
+                import neewer_audio
+                audio_source = neewer_audio.MicSource(device=args.device)
+                await audio_source.start()
+
+            runner = neewer_scenes.SceneRunner(scene, lights,
+                                               audio_source=audio_source)
+            print("Running... (Ctrl+C to stop)")
+            try:
+                await runner.run()
+            except asyncio.CancelledError:
+                pass
+            finally:
+                if audio_source:
+                    await audio_source.stop()
+                runner.stop()
+
+        await run_command(relay_addr, relay_dname, run_scene, args.verbose,
+                         proto_arg=proto_arg)
+
+    elif args.command == "scene-list":
+        import neewer_scenes
+        scenes = neewer_scenes.list_scenes()
+        if not scenes:
+            print("No scenes found. Create .yaml or .py files in scenes/")
+        else:
+            for path in scenes:
+                try:
+                    s = neewer_scenes.load_scene(path)
+                    stype = "gen" if s.generative else "yaml"
+                    print(f"  {os.path.basename(path):<30s} {s.name:<20s} [{stype}]")
+                except Exception as e:
+                    print(f"  {os.path.basename(path):<30s} (error: {e})")
 
 
 if __name__ == "__main__":
