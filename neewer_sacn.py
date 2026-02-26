@@ -5,14 +5,15 @@ Receives sACN/E1.31 data on a universe and translates DMX channel values
 to BLE commands for Neewer lights. Each light gets a 10-channel DMX footprint
 matching the Neewer DMX spec:
 
-  Offset  Name        CCT (0-31)      HSI (32-63)     FX (64-95)
-  ------  ----------  --------------  --------------  --------------
-  0       Mode        0-31            32-63           64-95
-  1       Dimmer      0-255 → 0-100%  0-255 → 0-100%  0-255 → 0-100%
-  2       Param A     CCT temp        Hue             Effect ID
-  3       Param B     G/M             Saturation      Speed/Pace
-  4-9     FX subs     (unused)        (unused)        Effect sub-params
+  Offset  Name        CCT (0-31)      HSI (32-63)     FX (64-95)      GEL (96-127)
+  ------  ----------  --------------  --------------  -------------- ---------------
+  0       Mode        0-31            32-63           64-95           96-127
+  1       Dimmer      0-255 → 0-100%  0-255 → 0-100%  0-255 → 0-100%  0-255 → 0-100%
+  2       Param A     CCT temp        Hue             Effect ID       Gel index
+  3       Param B     G/M             Saturation      Speed/Pace      (unused)
+  4-9     FX subs     (unused)        (unused)        Effect sub-params (unused)
 
+  Gel index: 0-119 = ROSCO, 120-239 = LEE (per Neewer DMX spec).
   Mode 128-255 = blackout/power off.
 
 Usage:
@@ -71,6 +72,52 @@ def dmx_to_speed(val):
 def dmx_to_effect(val):
     """DMX 0-255 → effect ID 1-18."""
     return 1 + min(17, val * 18 // 256)
+
+
+def dmx_to_color(val):
+    """DMX 0-255 → color preset 0-4."""
+    return min(4, val * 5 // 256)
+
+
+def dmx_to_sparks(val):
+    """DMX 0-255 → ember/sparks 0-10."""
+    return round(val * 10 / 255)
+
+
+# FX sub-parameter mapping: effect_id → [(kwarg_name, converter), ...]
+# Maps DMX channels +4, +5, +6, ... to build_scene kwargs
+_FX_SUBS = {
+    0x01: [("temp", dmx_to_cct_k)],                                            # Lightning: CCT
+    0x02: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],                        # Paparazzi: CCT, G/M
+    0x03: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],                        # Defective Bulb
+    0x04: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm), ("sparks", dmx_to_sparks)],  # Explosion
+    0x05: [("brr_hi", dmx_to_pct), ("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],     # Welding
+    0x06: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],                        # CCT Flash
+    0x07: [("hue", dmx_to_hue), ("sat", dmx_to_pct)],                          # Hue Flash
+    0x08: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],                        # CCT Pulse
+    0x09: [("hue", dmx_to_hue), ("sat", dmx_to_pct)],                          # Hue Pulse
+    0x0A: [("color", dmx_to_color)],                                            # Cop Car
+    0x0B: [("brr_hi", dmx_to_pct), ("temp", dmx_to_cct_k), ("gm", dmx_to_gm),
+           ("sparks", dmx_to_sparks)],                                          # Candlelight
+    0x0C: [("hue", dmx_to_hue), ("hue_hi", dmx_to_hue)],                      # Hue Loop
+    0x0D: [("temp", dmx_to_cct_k), ("temp_hi", dmx_to_cct_k)],                # CCT Loop
+    0x0E: [("brr_hi", dmx_to_pct), ("hue", dmx_to_hue)],                      # INT Loop
+    0x0F: [("temp", dmx_to_cct_k), ("gm", dmx_to_gm)],                        # TV Screen
+    0x10: [("color", dmx_to_color), ("sparks", dmx_to_sparks)],                # Fireworks
+    0x11: [("color", dmx_to_color)],                                            # Party
+    0x12: [],                                                                    # Music (no sub-params)
+}
+
+
+def get_fx_kwargs(effect_id, dmx):
+    """Extract effect sub-params from DMX channels +4..+9 → build_scene kwargs."""
+    subs = _FX_SUBS.get(effect_id, [])
+    kwargs = {}
+    for i, (name, converter) in enumerate(subs):
+        idx = 4 + i
+        if idx < len(dmx) and dmx[idx] > 0:
+            kwargs[name] = converter(dmx[idx])
+    return kwargs
 
 
 # -- Light connection --------------------------------------------------------
@@ -153,6 +200,11 @@ class NeewerSACNBridge:
         self.running = False
         self.verbose = False
         self.frame_count = 0
+        # Channel mode: use channel-addressed commands through one BLE connection
+        self.channel_mode = False
+        self.channel_num = 1
+        self.network_id = None
+        self.relay_light = None  # the one connected light in channel mode
 
     # -- sACN callback (runs in receiver thread) --
 
@@ -202,6 +254,44 @@ class NeewerSACNBridge:
             print(f"  {light.name} ch {light.start_channel}-"
                   f"{light.start_channel + CHANNELS_PER_LIGHT - 1}  {status}")
             await asyncio.sleep(0.3)
+
+    async def setup_channel_mode(self, channel_num=1, network_id=None):
+        """Assign all lights to a channel, keep only one BLE connection."""
+        import random
+        self.channel_mode = True
+        self.channel_num = channel_num
+        self.network_id = network_id or random.randint(1, 0x7FFFFFFF)
+
+        print(f"\nChannel mode: assigning all lights to channel {channel_num} "
+              f"(network {self.network_id})")
+
+        # Connect to each light briefly to assign it to the channel
+        for light in self.lights:
+            ok = await light.connect()
+            if not ok:
+                print(f"  WARN: cannot connect to {light.name} for channel assign")
+                continue
+            pkt = neewer.cmd_channel_assign(light.mac_bytes, channel_num, self.network_id)
+            await light.send(pkt)
+            print(f"  Assigned {light.name} → channel {channel_num}")
+            await asyncio.sleep(0.3)
+
+        # Keep only the first connected light as relay
+        for light in self.lights:
+            if light.connected:
+                self.relay_light = light
+                break
+
+        # Disconnect all others
+        for light in self.lights:
+            if light is not self.relay_light and light.connected:
+                await light.disconnect()
+                await asyncio.sleep(0.1)
+
+        if self.relay_light:
+            print(f"\nRelay through: {self.relay_light.name}")
+        else:
+            print("ERROR: No relay light available!", file=sys.stderr)
 
     # -- DMX → BLE translation --
 
@@ -262,11 +352,13 @@ class NeewerSACNBridge:
         elif mode_byte <= 95:
             effect_id = dmx_to_effect(dmx[2])
             speed = dmx_to_speed(dmx[3])
+            fx_kwargs = get_fx_kwargs(effect_id, dmx)
 
             if light.current_mode == "fx" and light.current_effect == effect_id:
-                # Same effect — just resend to update brightness/speed
+                # Same effect — just resend to update brightness/speed/params
                 pkt = neewer.build_scene(
-                    light.proto, light.mac_bytes, effect_id, bri, speed)
+                    light.proto, light.mac_bytes, effect_id, bri, speed,
+                    **fx_kwargs)
                 await light.send(pkt)
             else:
                 # New effect — power cycle required
@@ -277,7 +369,8 @@ class NeewerSACNBridge:
                     neewer.build_power(light.proto, light.mac_bytes, on=True))
                 await asyncio.sleep(0.05)
                 pkt = neewer.build_scene(
-                    light.proto, light.mac_bytes, effect_id, bri, speed)
+                    light.proto, light.mac_bytes, effect_id, bri, speed,
+                    **fx_kwargs)
                 await light.send(pkt)
                 light.power_on = True
 
@@ -287,7 +380,114 @@ class NeewerSACNBridge:
                 ename = next(
                     (k for k, v in neewer.EFFECTS.items() if v == effect_id),
                     f"#{effect_id}")
-                print(f"  {light.name}: FX {ename} bri={bri}% speed={speed}")
+                extra = " ".join(f"{k}={v}" for k, v in fx_kwargs.items())
+                print(f"  {light.name}: FX {ename} bri={bri}% speed={speed}"
+                      + (f" ({extra})" if extra else ""))
+
+        # -- GEL mode (mode byte 96-127) --
+        elif mode_byte <= 127:
+            gel_idx = dmx[2]  # 0-119=ROSCO, 120-239=LEE
+            if gel_idx < 120:
+                brand, gel_num = 1, gel_idx  # ROSCO
+            else:
+                brand, gel_num = 2, gel_idx - 120  # LEE
+            if light.proto == "infinity":
+                pkt = neewer.cmd_gel_native(
+                    light.mac_bytes, 0, 0, bri, brand, gel_num)
+            else:
+                # Non-infinity: approximate with CCT neutral white
+                pkt = neewer.build_cct(light.proto, light.mac_bytes, bri, 5000, 0)
+            await light.send(pkt)
+            light.current_mode = "gel"
+            light.current_effect = None
+            if self.verbose:
+                bname = "ROSCO" if brand == 1 else "LEE"
+                print(f"  {light.name}: GEL {bname}#{gel_num} bri={bri}%")
+
+    async def _send_dmx_via_channel(self, light, dmx):
+        """Translate DMX to channel-addressed BLE commands."""
+        mode_byte = dmx[0]
+        bri = dmx_to_pct(dmx[1])
+        nid = self.network_id
+        ch = self.channel_num
+
+        if mode_byte >= 128 or (mode_byte == 0 and dmx[1] == 0):
+            if light.power_on:
+                await self.relay_light.send(neewer.ch_cmd_power(nid, ch, on=False))
+                light.power_on = False
+                light.current_mode = "off"
+                if self.verbose:
+                    print(f"  {light.name}: OFF (ch)")
+            return
+
+        if not light.power_on:
+            await self.relay_light.send(neewer.ch_cmd_power(nid, ch, on=True))
+            light.power_on = True
+            await asyncio.sleep(0.02)
+
+        if mode_byte <= 31:
+            temp = dmx_to_cct_k(dmx[2])
+            gm = dmx_to_gm(dmx[3])
+            pkt = neewer.ch_cmd_cct(nid, ch, bri, temp, gm)
+            await self.relay_light.send(pkt)
+            light.current_mode = "cct"
+            light.current_effect = None
+            if self.verbose:
+                print(f"  {light.name}: CCT bri={bri}% temp={temp}K gm={gm} (ch)")
+
+        elif mode_byte <= 63:
+            hue = dmx_to_hue(dmx[2])
+            sat = dmx_to_pct(dmx[3])
+            pkt = neewer.ch_cmd_hsi(nid, ch, hue, sat, bri)
+            await self.relay_light.send(pkt)
+            light.current_mode = "hsi"
+            light.current_effect = None
+            if self.verbose:
+                print(f"  {light.name}: HSI hue={hue} sat={sat}% bri={bri}% (ch)")
+
+        elif mode_byte <= 95:
+            effect_id = dmx_to_effect(dmx[2])
+            speed = dmx_to_speed(dmx[3])
+            fx_kwargs = get_fx_kwargs(effect_id, dmx)
+
+            if light.current_mode == "fx" and light.current_effect == effect_id:
+                pkt = neewer.ch_cmd_scene(nid, ch, effect_id, bri, speed,
+                                          **fx_kwargs)
+                await self.relay_light.send(pkt)
+            else:
+                await self.relay_light.send(neewer.ch_cmd_power(nid, ch, on=False))
+                await asyncio.sleep(0.05)
+                await self.relay_light.send(neewer.ch_cmd_power(nid, ch, on=True))
+                await asyncio.sleep(0.05)
+                pkt = neewer.ch_cmd_scene(nid, ch, effect_id, bri, speed,
+                                          **fx_kwargs)
+                await self.relay_light.send(pkt)
+                light.power_on = True
+
+            light.current_mode = "fx"
+            light.current_effect = effect_id
+            if self.verbose:
+                ename = next(
+                    (k for k, v in neewer.EFFECTS.items() if v == effect_id),
+                    f"#{effect_id}")
+                extra = " ".join(f"{k}={v}" for k, v in fx_kwargs.items())
+                print(f"  {light.name}: FX {ename} bri={bri}% speed={speed}"
+                      + (f" ({extra})" if extra else "") + " (ch)")
+
+        # -- GEL mode (mode byte 96-127) --
+        elif mode_byte <= 127:
+            gel_idx = dmx[2]
+            if gel_idx < 120:
+                brand, gel_num = 1, gel_idx
+            else:
+                brand, gel_num = 2, gel_idx - 120
+            pkt = neewer.ch_cmd_gel_native(nid, ch, 0, 0, bri, brand, gel_num)
+            await self.relay_light.send(pkt)
+            light.current_mode = "gel"
+            light.current_effect = None
+            if self.verbose:
+                bname = "ROSCO" if brand == 1 else "LEE"
+                print(f"  {light.name}: GEL {bname}#{gel_num} bri={bri}% (ch)")
 
     # -- Main loop --
 
@@ -324,24 +524,28 @@ class NeewerSACNBridge:
                 dmx_snapshot = self.latest_dmx
 
             if dmx_snapshot is not None:
-                for light in self.lights:
-                    if not light.connected:
-                        continue
-
-                    dmx = self._get_light_dmx(light)
-                    if dmx is None:
-                        continue
-
-                    # Skip if unchanged
-                    if dmx == light.last_dmx:
-                        continue
-
-                    # Rate limit per light
-                    if now - light.last_send_time < MIN_SEND_INTERVAL:
-                        continue
-
-                    await self._send_dmx_to_light(light, dmx)
-                    light.last_dmx = dmx
+                if self.channel_mode and self.relay_light and self.relay_light.connected:
+                    # Channel mode: all lights share one BLE connection
+                    for light in self.lights:
+                        dmx = self._get_light_dmx(light)
+                        if dmx is None or dmx == light.last_dmx:
+                            continue
+                        if now - self.relay_light.last_send_time < MIN_SEND_INTERVAL:
+                            continue
+                        await self._send_dmx_via_channel(light, dmx)
+                        light.last_dmx = dmx
+                else:
+                    # Direct mode: each light has own BLE connection
+                    for light in self.lights:
+                        if not light.connected:
+                            continue
+                        dmx = self._get_light_dmx(light)
+                        if dmx is None or dmx == light.last_dmx:
+                            continue
+                        if now - light.last_send_time < MIN_SEND_INTERVAL:
+                            continue
+                        await self._send_dmx_to_light(light, dmx)
+                        light.last_dmx = dmx
 
             await asyncio.sleep(self.poll_interval)
 
@@ -358,10 +562,10 @@ class NeewerSACNBridge:
                   f"{proto:<10s}{status}")
         print()
         print("  Per-light channels (10 per fixture):")
-        print("    +0  Mode        0-31=CCT  32-63=HSI  64-95=FX  128+=Off")
+        print("    +0  Mode        0-31=CCT  32-63=HSI  64-95=FX  96-127=GEL  128+=Off")
         print("    +1  Dimmer      0-255 brightness")
-        print("    +2  Param A     CCT: temp | HSI: hue | FX: effect")
-        print("    +3  Param B     CCT: G/M  | HSI: sat | FX: speed")
+        print("    +2  Param A     CCT: temp | HSI: hue | FX: effect | GEL: index")
+        print("    +3  Param B     CCT: G/M  | HSI: sat | FX: speed  | GEL: (unused)")
         print("    +4  FX sub 1    (effect-specific)")
         print("    +5  FX sub 2    (effect-specific)")
         print("    +6  FX sub 3    (effect-specific)")
@@ -371,13 +575,23 @@ class NeewerSACNBridge:
 
     # -- Entry point --
 
-    async def run(self, start_channel=1, timeout=5.0):
+    async def run(self, start_channel=1, timeout=5.0, channel_mode=False,
+                  channel_num=1, network_id=None):
         if not await self.scan_and_setup(start_channel, timeout):
             return
 
-        await self.connect_all()
+        if channel_mode:
+            # Channel mode: assign all, keep one connection
+            await self.connect_all()
+            await self.setup_channel_mode(channel_num, network_id)
+            if not self.relay_light or not self.relay_light.connected:
+                print("No relay light available. Exiting.")
+                return
+        else:
+            await self.connect_all()
 
-        connected = sum(1 for l in self.lights if l.connected)
+        connected = (1 if self.channel_mode and self.relay_light
+                     else sum(1 for l in self.lights if l.connected))
         if connected == 0:
             print("No lights connected. Exiting.")
             return
@@ -411,9 +625,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""\
 Channel layout (10 per light, matching Neewer DMX specs):
-  +0 Mode      0-31=CCT, 32-63=HSI, 64-95=FX, 128+=Off
+  +0 Mode      0-31=CCT, 32-63=HSI, 64-95=FX, 96-127=GEL, 128+=Off
   +1 Dimmer    0-255 (brightness)
-  +2 Param A   CCT: color temp | HSI: hue | FX: effect number
+  +2 Param A   CCT: color temp | HSI: hue | FX: effect | GEL: index (0-119 ROSCO, 120-239 LEE)
   +3 Param B   CCT: G/M tint   | HSI: saturation | FX: speed
 
 Examples:
@@ -433,6 +647,12 @@ Examples:
                         help="print every DMX→BLE translation")
     parser.add_argument("--list-channels", action="store_true",
                         help="scan, print channel map, and exit")
+    parser.add_argument("--channel-mode", action="store_true",
+                        help="use channel broadcasting (1 BLE connection for all lights)")
+    parser.add_argument("--channel-num", type=int, default=1,
+                        help="BLE channel number for channel mode (default: 1)")
+    parser.add_argument("--network-id", type=int, default=None,
+                        help="network ID for channel mode (auto-generated if omitted)")
     args = parser.parse_args()
 
     bridge = NeewerSACNBridge(universe=args.universe, fps=args.fps)
@@ -445,7 +665,10 @@ Examples:
         asyncio.run(list_only())
     else:
         asyncio.run(bridge.run(
-            start_channel=args.start_channel, timeout=args.timeout))
+            start_channel=args.start_channel, timeout=args.timeout,
+            channel_mode=args.channel_mode,
+            channel_num=args.channel_num,
+            network_id=args.network_id))
 
 
 if __name__ == "__main__":
