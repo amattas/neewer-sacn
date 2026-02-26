@@ -1,0 +1,14 @@
+name: Sunset Fade
+duration: 30s
+loop: true
+targets: [all]
+
+steps:
+  - at: 0s
+    all: {mode: cct, brightness: 80, temp: 5600}
+  - at: 10s
+    all: {fade: {brightness: 60, temp: 3200}}
+  - at: 20s
+    all: {fade: {brightness: 20, temp: 2700}}
+  - at: 28s
+    all: {fade: {brightness: 80, temp: 5600}}

@@ -1,0 +1,10 @@
+name: Interview Setup
+duration: 2s
+loop: false
+targets: [key, fill, hair]
+
+steps:
+  - at: 0s
+    key:  {mode: cct, brightness: 80, temp: 5600, gm: 0}
+    fill: {mode: cct, brightness: 40, temp: 4200, gm: 5}
+    hair: {mode: hsi, hue: 220, sat: 60, brightness: 30}

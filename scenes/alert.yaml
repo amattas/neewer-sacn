@@ -1,0 +1,18 @@
+name: Alert
+duration: 4s
+loop: true
+targets: [all]
+
+steps:
+  - at: 0s
+    all: {mode: hsi, hue: 0, sat: 100, brightness: 100}
+  - at: 0.5s
+    all: {fade: {brightness: 0}}
+  - at: 1s
+    all: {fade: {brightness: 100}}
+  - at: 1.5s
+    all: {fade: {brightness: 0}}
+  - at: 2s
+    all: {fade: {brightness: 100, hue: 0}}
+  - at: 3.5s
+    all: {fade: {brightness: 0}}
