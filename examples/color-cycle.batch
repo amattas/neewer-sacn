@@ -1,0 +1,19 @@
+# Color cycle loop
+# Usage: python neewer.py batch examples/color-cycle.batch --light 0 --loop 0
+
+color red 80
+sleep 1
+color orange 80
+sleep 1
+color yellow 80
+sleep 1
+color green 80
+sleep 1
+color cyan 80
+sleep 1
+color blue 80
+sleep 1
+color violet 80
+sleep 1
+color magenta 80
+sleep 1

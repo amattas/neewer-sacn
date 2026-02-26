@@ -1,0 +1,11 @@
+***REMOVED***
+***REMOVED***
+***REMOVED***
+*.apk
+__pycache__/
+*.pyc
+.venv/
+.neewer_cache.json
+.neewer_history
+.pytest_cache/
+.claude/

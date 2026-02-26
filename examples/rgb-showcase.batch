@@ -1,0 +1,37 @@
+# RGB Showcase: demonstrate full color capabilities
+# Usage: python neewer.py batch examples/rgb-showcase.batch --light 0
+
+# Start with warm white
+source daylight 80
+sleep 2
+
+# Primary colors
+color red 90
+sleep 1.5
+color green 90
+sleep 1.5
+color blue 90
+sleep 1.5
+
+# Secondary colors
+color yellow 80
+sleep 1.5
+color cyan 80
+sleep 1.5
+color magenta 80
+sleep 1.5
+
+# Rainbow sweep (shortest path through spectrum)
+fade-hue 0 60 100 80 2
+fade-hue 60 120 100 80 2
+fade-hue 120 180 100 80 2
+fade-hue 180 240 100 80 2
+fade-hue 240 300 100 80 2
+fade-hue 300 360 100 80 2
+
+# Cool-to-warm fade
+fade-temp 8000 2500 80 4
+sleep 1
+
+# End on neutral daylight
+source daylight 70
