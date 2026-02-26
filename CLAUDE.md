@@ -38,8 +38,8 @@ python neewer.py xy --light 0 --brightness 80 --x 0.3127 --y 0.3290
 python neewer.py fan --light 0                           # query temp/fan
 python neewer.py fan --light 0 --mode 2                  # set fan mode
 
-# All 31 CLI subcommands
-scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo, interactive, batch, raw, info, preset, group, monitor, effects, gels, sources, colors, channel, find, battery, fan, booster, rgbcw, xy
+# All 35 CLI subcommands
+scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo, interactive, batch, raw, info, preset, group, monitor, effects, gels, sources, colors, channel, find, battery, fan, booster, rgbcw, xy, config, connections, scene-run, scene-list, tui, audio-test
 # REPL-only session commands: bri, temp, hue, fade-color, fade-temp, fade-hue, random, find, battery, fan, booster, rgbcw, xy
 ```
 
@@ -55,13 +55,60 @@ python neewer_sacn.py --list-channels           # show channel map and exit
 python neewer_sacn.py --verbose                 # debug output for every DMX→BLE translation
 ```
 
+## Configuration System
+
+`neewer_config.py` manages persistent multi-group configurations with role-based light assignments, channel auto-management, and state snapshots. Stored in `.neewer_config.json`.
+
+```bash
+python neewer.py config create studio           # create config with random NETID
+python neewer.py config add-light studio key --light 0  # assign role
+python neewer.py config use studio              # set active
+python neewer.py config show studio             # display details
+python neewer.py connections                    # show BLE connections and channel map
+python neewer.py --config studio cct --brightness 80 --temp 5600  # target via config
+```
+
+## Scene Engine
+
+`neewer_scenes.py` supports scripted YAML scenes (timed steps with fade interpolation) and generative Python scenes (render() callback). Example scenes in `scenes/`.
+
+```bash
+python neewer.py scene-list                     # list available scenes
+python neewer.py scene-run scenes/sunset-fade.yaml --config studio
+python neewer.py scene-run scenes/rainbow_chase.py --config studio
+python neewer.py scene-run scenes/beat_flash.py --config studio --mic  # audio-reactive
+```
+
+## Terminal UI
+
+`neewer_tui.py` provides a Textual-based TUI with three views: Dashboard (light cards), Scene Designer (timeline viewer), Performance Console (faders, hotkeys, audio meter). Requires `pip install -r requirements-tui.txt`.
+
+```bash
+python neewer.py tui                            # launch TUI
+python neewer_tui.py                            # direct launch
+```
+
+## Audio System
+
+`neewer_audio.py` provides audio analysis: RMS amplitude, 3-band FFT (bass/mid/treble), energy-based beat detection with BPM estimation. Pluggable AudioSource base class with MicSource implementation. Requires `pip install -r requirements-audio.txt`.
+
+```bash
+python neewer.py audio-test                     # live mic level display
+python neewer.py audio-test --device 2          # specific audio device
+```
+
 ## Tests
 
 ```bash
-/opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest test_protocol.py -v
+/opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest test_protocol.py test_sacn_bridge.py test_config.py test_scenes.py test_audio.py -v
 ```
 
-135 tests (110 protocol + 25 bridge) covering all of the above plus: channel command envelope, channel power/CCT/HSI/scene builders, channel-vs-MAC parity (including gel native), network management (assign/remove/set/delete), native gel (big-endian hue encoding, Infinity native TAG 0xAD, brand/gel_num parsing), RGBCW (direct RGB+CW control with clamping), XY color coordinate encoding, utility commands (find, battery, temp/fan, booster), channel-addressed INT Loop scene, all 18 FX sub-parameter mappings in sACN bridge.
+178 tests across 5 test files:
+- `test_protocol.py` (110 tests): protocol builders, checksums, model detection, all 3 variants
+- `test_sacn_bridge.py` (25 tests): sACN-to-BLE translation, channel mode, FX sub-params
+- `test_config.py` (26 tests): config CRUD, snapshots, resolution, channel maps
+- `test_scenes.py` (10 tests): YAML/generative loading, interpolation, scene runner
+- `test_audio.py` (7 tests): RMS, frequency bands, beat detection
 
 ## Protocol
 
@@ -97,7 +144,8 @@ Key facts:
 
 - Use fully qualified conda path: `/opt/homebrew/Caskroom/miniforge/base/bin/conda` or activate the environment before running Python scripts.
 - Do not assume `conda` or `python` are on the default PATH.
-- Dependencies: `bleak>=0.21.0`, `sacn>=1.9.0` (see `requirements.txt`)
+- Dependencies: `bleak>=0.21.0`, `sacn>=1.9.0`, `pyyaml>=6.0` (see `requirements.txt`)
+- Optional: `textual>=0.80.0` (TUI, see `requirements-tui.txt`), `numpy>=1.24.0` + `sounddevice>=0.4.6` (audio, see `requirements-audio.txt`)
 
 ## Key Patterns
 
