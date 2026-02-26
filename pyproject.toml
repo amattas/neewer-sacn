@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "neewer-ble"
 version = "0.1.0"
 description = "BLE protocol library for Neewer LED lights — control, scenes, grouping, and audio-reactive effects"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "bleak>=0.21.0",
