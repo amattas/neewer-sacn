@@ -96,6 +96,66 @@ def test_step_targets():
     os.unlink(path)
 
 
+# --- Task 7: Scene Runner ---
+
+import asyncio
+
+
+class FakeLight:
+    """Mock light for testing scene runner."""
+    def __init__(self, role):
+        self.role = role
+        self.commands = []
+
+    async def send(self, mode, params):
+        self.commands.append((mode, dict(params)))
+
+
+def test_scene_runner_generative():
+    code = '''
+name = "Gen Test"
+fps = 100
+
+def render(tick, lights, params, audio=None):
+    return {"all": {"mode": "cct", "brightness": 50, "temp": 5000}}
+'''
+    fd, path = tempfile.mkstemp(suffix=".py")
+    with os.fdopen(fd, "w") as f:
+        f.write(code)
+    scene = neewer_scenes.load_scene(path)
+
+    light = FakeLight("key")
+    runner = neewer_scenes.SceneRunner(scene, {"key": light}, max_ticks=5)
+    asyncio.get_event_loop().run_until_complete(runner.run())
+
+    assert len(light.commands) == 5
+    assert all(c[1]["brightness"] == 50 for c in light.commands)
+    os.unlink(path)
+
+
+def test_scene_runner_scripted():
+    data = {
+        "name": "Quick Test",
+        "duration": "0.2s",
+        "loop": False,
+        "targets": ["all"],
+        "steps": [
+            {"at": "0s", "all": {"mode": "cct", "brightness": 80, "temp": 5600}},
+            {"at": "0.1s", "all": {"mode": "cct", "brightness": 40, "temp": 3200}},
+        ],
+    }
+    path = _write_yaml(data)
+    scene = neewer_scenes.load_scene(path)
+
+    light = FakeLight("key")
+    runner = neewer_scenes.SceneRunner(scene, {"key": light})
+    asyncio.get_event_loop().run_until_complete(runner.run())
+
+    # Should have received at least 2 commands (one per step)
+    assert len(light.commands) >= 2
+    os.unlink(path)
+
+
 def test_list_scenes_empty(tmp_path):
     result = neewer_scenes.list_scenes(dirs=[str(tmp_path)])
     assert result == []
