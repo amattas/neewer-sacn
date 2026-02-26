@@ -2138,6 +2138,8 @@ def build_parser():
 
     sub.add_parser("scene-list", help="list available scenes")
 
+    sub.add_parser("tui", help="launch terminal UI")
+
     return parser
 
 
@@ -2508,7 +2510,7 @@ async def main():
         return
 
     # Commands that don't require --light are handled after this block
-    no_light_commands = ("config", "connections", "scene-run", "scene-list")
+    no_light_commands = ("config", "connections", "scene-run", "scene-list", "tui")
     raw_light = getattr(args, "light", None)
     config_target = getattr(args, "config_target", None)
 
@@ -3567,6 +3569,11 @@ async def main():
                     print(f"  {os.path.basename(path):<30s} {s.name:<20s} [{stype}]")
                 except Exception as e:
                     print(f"  {os.path.basename(path):<30s} (error: {e})")
+
+    elif args.command == "tui":
+        import neewer_tui
+        neewer_tui.main()
+        return
 
 
 if __name__ == "__main__":
