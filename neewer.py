@@ -2076,6 +2076,55 @@ def build_parser():
     p_xy.add_argument("--x", type=float, required=True, help="CIE x (0.0-1.0)")
     p_xy.add_argument("--y", type=float, required=True, help="CIE y (0.0-1.0)")
 
+    # --- Config management ---
+    p_cfg = sub.add_parser("config", help="manage light configurations")
+    cfg_sub = p_cfg.add_subparsers(dest="config_cmd")
+
+    cfg_sub.add_parser("list", help="list all configs")
+    cfg_sub.add_parser("active", help="show active config")
+
+    p_cfg_create = cfg_sub.add_parser("create", help="create a new config")
+    p_cfg_create.add_argument("name", help="config name")
+
+    p_cfg_delete = cfg_sub.add_parser("delete", help="delete a config")
+    p_cfg_delete.add_argument("name", help="config name")
+
+    p_cfg_use = cfg_sub.add_parser("use", help="set active config")
+    p_cfg_use.add_argument("name", help="config name")
+
+    p_cfg_show = cfg_sub.add_parser("show", help="show config details")
+    p_cfg_show.add_argument("name", help="config name")
+
+    p_cfg_add = cfg_sub.add_parser("add-light", help="assign a light to a config role")
+    p_cfg_add.add_argument("config", help="config name")
+    p_cfg_add.add_argument("role", help="role name (e.g. key, fill, hair)")
+    p_cfg_add.add_argument("--light", required=True, help="device identifier")
+
+    p_cfg_rm = cfg_sub.add_parser("remove-light", help="remove a role from config")
+    p_cfg_rm.add_argument("config", help="config name")
+    p_cfg_rm.add_argument("role", help="role name")
+
+    p_cfg_snap = cfg_sub.add_parser("snapshot", help="manage state snapshots")
+    snap_sub = p_cfg_snap.add_subparsers(dest="snap_cmd")
+
+    p_snap_save = snap_sub.add_parser("save", help="save snapshot")
+    p_snap_save.add_argument("config", help="config name")
+    p_snap_save.add_argument("name", help="snapshot name")
+
+    p_snap_recall = snap_sub.add_parser("recall", help="recall a saved snapshot")
+    p_snap_recall.add_argument("config", help="config name")
+    p_snap_recall.add_argument("name", help="snapshot name")
+
+    p_snap_delete = snap_sub.add_parser("delete", help="delete a snapshot")
+    p_snap_delete.add_argument("config", help="config name")
+    p_snap_delete.add_argument("name", help="snapshot name")
+
+    p_snap_list = snap_sub.add_parser("list", help="list snapshots")
+    p_snap_list.add_argument("config", help="config name")
+
+    # --- Connection visibility ---
+    sub.add_parser("connections", help="show BLE connections and channel map")
+
     return parser
 
 
@@ -2445,11 +2494,19 @@ async def main():
             print(f"  {name:<14s}  hue={hue:3d}  sat={sat:3d}%")
         return
 
-    # Resolve light alias/name/index to address
-    raw_light = args.light
-    address, device_name_from_cache = _resolve_light_alias(raw_light)
-    device_name = getattr(args, "name", None) or device_name_from_cache
-    use_all = address.lower() == "all"
+    # Commands that don't require --light are handled after this block
+    no_light_commands = ("config", "connections")
+    raw_light = getattr(args, "light", None)
+
+    if raw_light is not None:
+        address, device_name_from_cache = _resolve_light_alias(raw_light)
+        device_name = getattr(args, "name", None) or device_name_from_cache
+        use_all = address.lower() == "all"
+    elif args.command not in no_light_commands:
+        print(f"ERROR: --light is required for '{args.command}'")
+        return
+    else:
+        address, device_name, use_all = None, None, False
 
     proto_arg = args.protocol  # "auto" or explicit; resolved per-light in connect_and_run
 
@@ -3309,6 +3366,106 @@ async def main():
 
         await run_command(address, device_name, do_xy, args.verbose, use_all, proto_arg)
         print("Done.")
+
+    elif args.command == "config":
+        import neewer_config
+        store = neewer_config.ConfigStore()
+
+        if args.config_cmd == "create":
+            store.create(args.name)
+            print(f"Created config '{args.name}' "
+                  f"(network ID: 0x{store.configs[args.name]['network_id']:08X})")
+        elif args.config_cmd == "delete":
+            store.delete(args.name)
+            print(f"Deleted config '{args.name}'")
+        elif args.config_cmd == "list":
+            configs = store.list_configs()
+            if not configs:
+                print("No configurations.")
+            else:
+                for name in sorted(configs):
+                    marker = " (active)" if name == store.active else ""
+                    n_lights = len(store.configs[name]["lights"])
+                    n_snaps = len(store.configs[name]["snapshots"])
+                    print(f"  {name}{marker}  [{n_lights} lights, {n_snaps} snapshots]")
+        elif args.config_cmd == "active":
+            if store.active:
+                print(f"Active config: {store.active}")
+            else:
+                print("No active config set. Use: neewer.py config use <name>")
+        elif args.config_cmd == "use":
+            store.set_active(args.name)
+            print(f"Active config set to '{args.name}'")
+        elif args.config_cmd == "show":
+            neewer_config.print_config(store, args.name)
+        elif args.config_cmd == "add-light":
+            addr, dname = _resolve_light_alias(args.light)
+            alias = dname or args.light
+            store.add_light(args.config, args.role, args.light, alias)
+            ch = store.configs[args.config]["channels"][args.role]
+            print(f"Added '{args.role}' -> {alias} (channel {ch})")
+        elif args.config_cmd == "remove-light":
+            store.remove_light(args.config, args.role)
+            print(f"Removed '{args.role}' from '{args.config}'")
+        elif args.config_cmd == "snapshot":
+            if args.snap_cmd == "save":
+                state = {}
+                store.snapshot_save(args.config, args.name, state)
+                print(f"Saved snapshot '{args.name}' in '{args.config}'")
+            elif args.snap_cmd == "recall":
+                state = store.snapshot_recall(args.config, args.name)
+                print(f"Recalling snapshot '{args.name}'...")
+                for role, params in state.items():
+                    targets = store.resolve_targets(args.config, role=role)
+                    if not targets:
+                        continue
+                    _, device, ch_num = targets[0]
+                    mode = params.get("mode", "cct")
+                    if mode == "cct":
+                        bri = params.get("brightness", 50)
+                        temp = params.get("temp", 5000)
+                        gm = params.get("gm", 0)
+                        async def do_cct(client, mac_bytes, verbose, proto,
+                                         _b=bri, _t=temp, _g=gm):
+                            pkt = build_cct(proto, mac_bytes, _b, _t, _g)
+                            await client.write_gatt_char(WRITE_UUID, pkt,
+                                                         response=False)
+                        a, dn = _resolve_light_alias(device)
+                        await run_command(a, dn, do_cct, args.verbose,
+                                          proto_arg=proto_arg)
+                    elif mode == "hsi":
+                        hue = params.get("hue", 0)
+                        sat = params.get("sat", 100)
+                        bri = params.get("brightness", 50)
+                        async def do_hsi(client, mac_bytes, verbose, proto,
+                                         _h=hue, _s=sat, _b=bri):
+                            pkt = build_hsi(proto, mac_bytes, _h, _s, _b)
+                            await client.write_gatt_char(WRITE_UUID, pkt,
+                                                         response=False)
+                        a, dn = _resolve_light_alias(device)
+                        await run_command(a, dn, do_hsi, args.verbose,
+                                          proto_arg=proto_arg)
+                    print(f"  {role}: {mode} applied")
+            elif args.snap_cmd == "delete":
+                store.snapshot_delete(args.config, args.name)
+                print(f"Deleted snapshot '{args.name}'")
+            elif args.snap_cmd == "list":
+                snaps = store.snapshot_list(args.config)
+                if not snaps:
+                    print("No snapshots.")
+                else:
+                    for s in sorted(snaps):
+                        print(f"  {s}")
+            else:
+                print("Usage: neewer.py config snapshot {save|recall|delete|list}")
+        else:
+            print("Usage: neewer.py config {create|delete|list|show|use|active|"
+                  "add-light|remove-light|snapshot}")
+
+    elif args.command == "connections":
+        import neewer_config
+        store = neewer_config.ConfigStore()
+        neewer_config.print_connections(store)
 
 
 if __name__ == "__main__":
