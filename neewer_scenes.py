@@ -8,9 +8,11 @@ Usage:
     scene = load_scene("scenes/sunset-fade.yaml")
     scene = load_scene("scenes/rainbow_chase.py")
 """
+import asyncio
 import importlib.util
 import os
 import re
+import time
 
 import yaml
 
@@ -134,3 +136,119 @@ def list_scenes(dirs=None):
             if fname.endswith((".yaml", ".yml", ".py")) and not fname.startswith("_"):
                 scenes.append(os.path.join(d, fname))
     return scenes
+
+
+class SceneRunner:
+    """Runs a scene against a dict of {role: light} objects.
+
+    Each light must have an async send(mode, params) method.
+    For generative scenes, max_ticks limits iterations (None = run until cancelled).
+    """
+
+    def __init__(self, scene, lights, max_ticks=None, audio_source=None):
+        self.scene = scene
+        self.lights = lights
+        self.max_ticks = max_ticks
+        self.audio_source = audio_source
+        self._stop = False
+
+    def stop(self):
+        self._stop = True
+
+    async def run(self):
+        if self.scene.generative:
+            await self._run_generative()
+        else:
+            await self._run_scripted()
+
+    async def _run_generative(self):
+        interval = 1.0 / self.scene.fps
+        tick = 0
+        roles = list(self.lights.keys())
+        while not self._stop:
+            if self.max_ticks is not None and tick >= self.max_ticks:
+                break
+            audio = None
+            if self.audio_source:
+                audio = self.audio_source.read()
+            result = self.scene.render(tick, roles, {}, audio=audio)
+            await self._apply(result)
+            tick += 1
+            await asyncio.sleep(interval)
+
+    async def _run_scripted(self):
+        steps = self.scene.steps
+        if not steps:
+            return
+        duration = self.scene.duration
+        start = time.monotonic()
+
+        while not self._stop:
+            elapsed = time.monotonic() - start
+            if elapsed >= duration:
+                if self.scene.loop:
+                    start = time.monotonic()
+                    elapsed = 0.0
+                else:
+                    # Apply final step before exiting
+                    await self._apply_step(steps[-1])
+                    break
+
+            # Find surrounding steps for interpolation
+            prev_step = steps[0]
+            next_step = None
+            for s in steps:
+                if s.time <= elapsed:
+                    prev_step = s
+                else:
+                    next_step = s
+                    break
+
+            if next_step is None:
+                await self._apply_step(prev_step)
+            else:
+                # Interpolate between prev and next
+                span = next_step.time - prev_step.time
+                t = (elapsed - prev_step.time) / span if span > 0 else 1.0
+                await self._apply_interpolated(prev_step, next_step, t)
+
+            await asyncio.sleep(1.0 / 30)  # 30 fps update rate for scripted
+
+    async def _apply_step(self, step):
+        for role, params in step.targets.items():
+            if "fade" in params:
+                actual = dict(params)
+                actual.update(actual.pop("fade"))
+                params = actual
+            await self._send_to_role(role, params)
+
+    async def _apply_interpolated(self, prev_step, next_step, t):
+        for role in prev_step.targets:
+            a = prev_step.targets[role]
+            # Unwrap fade targets
+            if "fade" in a:
+                a = dict(a)
+                a.update(a.pop("fade"))
+
+            b = next_step.targets.get(role)
+            if b is None:
+                await self._send_to_role(role, a)
+                continue
+            if "fade" in b:
+                b = dict(b)
+                b.update(b.pop("fade"))
+
+            merged = interpolate(a, b, t)
+            await self._send_to_role(role, merged)
+
+    async def _apply(self, result):
+        for role, params in result.items():
+            await self._send_to_role(role, params)
+
+    async def _send_to_role(self, role, params):
+        mode = params.get("mode", "cct")
+        if role == "all":
+            for light in self.lights.values():
+                await light.send(mode, params)
+        elif role in self.lights:
+            await self.lights[role].send(mode, params)
