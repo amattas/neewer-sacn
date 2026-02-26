@@ -149,3 +149,49 @@ class ConfigStore:
         if name not in self.configs:
             raise ValueError(f"Config '{name}' not found")
         return self.configs[name]
+
+
+# --- Display helpers ---
+
+def print_config(store, name):
+    cfg = store._get_config(name)
+    marker = " (active)" if name == store.active else ""
+    print(f"Config: {name}{marker}")
+    print(f"Network ID: 0x{cfg['network_id']:08X}")
+    print()
+    if cfg["lights"]:
+        print(f"  {'Role':<12s} {'Light':<22s} {'Channel'}")
+        print("  " + "-" * 45)
+        for role, info in cfg["lights"].items():
+            ch = cfg["channels"].get(role, "?")
+            relay = " (relay)" if role == next(iter(cfg["lights"])) else ""
+            print(f"  {role:<12s} {info['alias']:<22s} ch {ch}{relay}")
+    else:
+        print("  No lights assigned.")
+    print()
+    snaps = cfg["snapshots"]
+    if snaps:
+        print(f"  Snapshots: {', '.join(sorted(snaps.keys()))}")
+    else:
+        print("  No snapshots.")
+
+
+def print_connections(store):
+    active = store.get_active()
+    if not active:
+        print("No active config. Use: neewer.py config use <name>")
+        return
+    name = store.active
+    cfg = active
+    nid = cfg["network_id"]
+    print(f"Active config: {name}")
+    print(f"Network ID: 0x{nid:08X}")
+    print()
+    if cfg["lights"]:
+        print("  Channel assignments:")
+        for role, info in cfg["lights"].items():
+            ch = cfg["channels"].get(role, "?")
+            relay = " (relay)" if role == next(iter(cfg["lights"])) else ""
+            print(f"    ch {ch}: {info['alias']} ({role}){relay}")
+    else:
+        print("  No lights assigned.")
