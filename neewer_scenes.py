@@ -252,3 +252,46 @@ class SceneRunner:
                 await light.send(mode, params)
         elif role in self.lights:
             await self.lights[role].send(mode, params)
+
+
+class BLELight:
+    """Adapter: scene runner -> BLE protocol commands via channel mode."""
+
+    def __init__(self, client, nid, ch, proto, mac_bytes, write_uuid):
+        self.client = client
+        self.nid = nid
+        self.ch = ch
+        self.proto = proto
+        self.mac_bytes = mac_bytes
+        self.write_uuid = write_uuid
+
+    async def send(self, mode, params):
+        import neewer
+        bri = params.get("brightness", 50)
+
+        if mode == "cct":
+            temp = params.get("temp", 5000)
+            gm = params.get("gm", 0)
+            if self.ch is not None:
+                pkt = neewer.ch_cmd_cct(self.nid, self.ch, bri, temp, gm)
+            else:
+                pkt = neewer.build_cct(self.proto, self.mac_bytes, bri, temp, gm)
+        elif mode == "hsi":
+            hue = params.get("hue", 0)
+            sat = params.get("sat", 100)
+            if self.ch is not None:
+                pkt = neewer.ch_cmd_hsi(self.nid, self.ch, hue, sat, bri)
+            else:
+                pkt = neewer.build_hsi(self.proto, self.mac_bytes, hue, sat, bri)
+        elif mode == "scene":
+            effect = params.get("effect", "lightning")
+            eid = neewer.EFFECTS.get(effect, 0x01) if isinstance(effect, str) else effect
+            speed = params.get("speed", 5)
+            if self.ch is not None:
+                pkt = neewer.ch_cmd_scene(self.nid, self.ch, eid, bri, speed)
+            else:
+                pkt = neewer.build_scene(self.proto, self.mac_bytes, eid, bri, speed)
+        else:
+            return
+
+        await self.client.write_gatt_char(self.write_uuid, pkt, response=False)
