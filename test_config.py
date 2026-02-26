@@ -211,3 +211,78 @@ def test_snapshot_list():
     names = store.snapshot_list("studio")
     assert sorted(names) == ["a", "b"]
     os.unlink(path)
+
+
+# --- Task 3: Resolution helpers ---
+
+def test_resolve_all_roles():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022", "PL60C")
+    store.add_light("studio", "fill", "NW-2024", "TL120")
+    targets = store.resolve_targets("studio")
+    assert len(targets) == 2
+    roles = [t[0] for t in targets]
+    assert "key" in roles
+    assert "fill" in roles
+    os.unlink(path)
+
+
+def test_resolve_single_role():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022", "PL60C")
+    store.add_light("studio", "fill", "NW-2024", "TL120")
+    targets = store.resolve_targets("studio", role="key")
+    assert len(targets) == 1
+    assert targets[0][0] == "key"
+    assert targets[0][1] == "NW-2022"
+    os.unlink(path)
+
+
+def test_parse_target_with_role():
+    store, path = _tmp_store()
+    store.create("studio")
+    config_name, role = store.parse_target("studio:key")
+    assert config_name == "studio"
+    assert role == "key"
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+def test_parse_target_without_role():
+    store, path = _tmp_store()
+    store.create("studio")
+    config_name, role = store.parse_target("studio")
+    assert config_name == "studio"
+    assert role is None
+    os.unlink(path)
+
+
+def test_get_relay_role():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022")
+    store.add_light("studio", "fill", "NW-2024")
+    relay = store.get_relay_role("studio")
+    assert relay in ("key", "fill")
+    os.unlink(path)
+
+
+def test_get_network_id():
+    store, path = _tmp_store()
+    store.create("studio")
+    nid = store.get_network_id("studio")
+    assert isinstance(nid, int)
+    assert 1 <= nid <= 0xFFFFFFFF
+    os.unlink(path)
+
+
+def test_get_channel_map():
+    store, path = _tmp_store()
+    store.create("studio")
+    store.add_light("studio", "key", "NW-2022")
+    store.add_light("studio", "fill", "NW-2024")
+    cmap = store.get_channel_map("studio")
+    assert cmap == {"key": 1, "fill": 2}
+    os.unlink(path)

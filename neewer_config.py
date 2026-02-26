@@ -106,6 +106,43 @@ class ConfigStore:
         cfg = self._get_config(config_name)
         return list(cfg["snapshots"].keys())
 
+    # --- Resolution helpers ---
+
+    def resolve_targets(self, config_name, role=None):
+        """Resolve config to list of (role, device, channel) tuples."""
+        cfg = self._get_config(config_name)
+        lights = cfg["lights"]
+        channels = cfg["channels"]
+        if role:
+            if role not in lights:
+                raise ValueError(f"Role '{role}' not found in '{config_name}'")
+            info = lights[role]
+            return [(role, info["device"], channels.get(role))]
+        return [(r, info["device"], channels.get(r))
+                for r, info in lights.items()]
+
+    def parse_target(self, target_str):
+        """Parse 'config:role' or 'config' → (config_name, role_or_None)."""
+        if ":" in target_str:
+            config_name, role = target_str.split(":", 1)
+            return config_name, role
+        return target_str, None
+
+    def get_relay_role(self, config_name):
+        """Get the first role (used as relay light for channel mode)."""
+        cfg = self._get_config(config_name)
+        if not cfg["lights"]:
+            raise ValueError(f"Config '{config_name}' has no lights")
+        return next(iter(cfg["lights"]))
+
+    def get_network_id(self, config_name):
+        cfg = self._get_config(config_name)
+        return cfg["network_id"]
+
+    def get_channel_map(self, config_name):
+        cfg = self._get_config(config_name)
+        return dict(cfg["channels"])
+
     # --- Internal ---
 
     def _get_config(self, name):
