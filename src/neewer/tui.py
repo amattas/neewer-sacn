@@ -19,7 +19,7 @@ except ImportError:
 import asyncio
 import json
 import os
-import neewer_config
+from neewer import config as neewer_config
 
 
 class BLEWorker:
@@ -34,7 +34,7 @@ class BLEWorker:
         self._queue = asyncio.Queue()
 
     async def connect(self):
-        import neewer
+        from neewer import protocol as neewer
         from bleak import BleakClient
 
         cfg_name = self.store.active
@@ -74,7 +74,7 @@ class BLEWorker:
 
     async def run(self):
         """Process command queue."""
-        import neewer
+        from neewer import protocol as neewer
 
         while True:
             role, mode, params = await self._queue.get()
@@ -192,7 +192,7 @@ class DesignerView(Container):
         self.scene_path = None
 
     def compose(self):
-        import neewer_scenes
+        from neewer import scenes as neewer_scenes
         scenes = neewer_scenes.list_scenes()
         items = [(os.path.basename(p), p) for p in scenes]
 
@@ -211,7 +211,7 @@ class DesignerView(Container):
     def on_select_changed(self, event):
         if event.select.id != "scene-select":
             return
-        import neewer_scenes
+        from neewer import scenes as neewer_scenes
         path = event.value
         if path is Select.BLANK:
             return
@@ -427,7 +427,7 @@ class NeewerTUI(App):
 
     async def _audio_loop(self):
         try:
-            import neewer_audio
+            from neewer import audio as neewer_audio
             source = neewer_audio.MicSource()
             await source.start()
         except Exception:

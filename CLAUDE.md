@@ -6,109 +6,151 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Reverse engineering the BLE (Bluetooth Low Energy) protocol used by Neewer LED lights for interoperability purposes (permitted under DMCA exemptions for interoperability). The official Neewer app is unreliable, so this project aims to build a working alternative control interface.
 
-## Working Tool
+## Project Structure
 
-`neewer.py` is the main CLI tool. Commands verified on PL60C and TL120 RGB-2 hardware.
+```
+src/neewer/          # Package source
+    __init__.py      # Re-exports protocol layer
+    __main__.py      # python -m neewer support
+    protocol.py      # Core BLE protocol + CLI (~3300 lines)
+    config.py        # Multi-group configuration management
+    sacn.py          # sACN (E1.31) DMX bridge
+    scenes.py        # Scene engine (YAML scripted + Python generative)
+    tui.py           # Textual-based terminal UI
+    audio.py         # Audio analysis (RMS, FFT, beat detection)
+    probe_tags.py    # BLE tag probing utility
+tests/               # Pytest test suite
+    test_protocol.py # 110 tests
+    test_sacn.py     # 25 tests
+    test_config.py   # 26 tests
+    test_scenes.py   # 10 tests
+    test_audio.py    # 7 tests
+docs/                # Documentation
+    protocol.md      # Full protocol spec
+scenes/              # Example scene files (YAML + Python)
+examples/            # Batch command files
+pyproject.toml       # Package config, deps, pytest config
+```
+
+## Setup & Running
 
 ```bash
-# Run with conda python (not on default PATH)
-/opt/homebrew/Caskroom/miniforge/base/bin/python neewer.py <command>
+# Install in editable mode (from repo root)
+/opt/homebrew/Caskroom/miniforge/base/bin/pip install -e ".[dev,audio,tui]"
 
-# Scan and use aliases
-python neewer.py scan                                              # find lights
-python neewer.py on --light 0                                      # use scan index
-python neewer.py cct --light NW-2022 --brightness 80 --temp 5600   # partial name match
-python neewer.py hsi --light all --hue 240 --sat 100 --brightness 80
+# Run CLI
+neewer <command>                  # via console script
+python -m neewer <command>       # via module
+
+# Run sACN bridge
+neewer-sacn                      # via console script
+
+# Run tests
+pytest                           # uses pyproject.toml [tool.pytest.ini_options]
+pytest tests/ -v                 # verbose
+```
+
+## CLI Commands
+
+Commands verified on PL60C and TL120 RGB-2 hardware.
+
+```bash
+neewer scan                                              # find lights
+neewer on --light 0                                      # use scan index
+neewer cct --light NW-2022 --brightness 80 --temp 5600   # partial name match
+neewer hsi --light all --hue 240 --sat 100 --brightness 80
 
 # Auto-detect protocol (default) or explicit override
-python neewer.py cct --light 0 --brightness 80 --temp 5600           # auto-detect
-python neewer.py --protocol extended cct --light 0 --brightness 80 --temp 5600
-python neewer.py --protocol legacy on --light 0
+neewer --protocol extended cct --light 0 --brightness 80 --temp 5600
+neewer --protocol legacy on --light 0
 
 # Channel-addressed group control (--ch flag)
-python neewer.py channel assign --light 0 --ch 1         # assign light to channel
-python neewer.py cct --light 0 --ch 1 --brightness 80 --temp 5600  # send via channel
-python neewer.py on --ch 1 --light 0                     # power via channel
+neewer channel assign --light 0 --ch 1
+neewer cct --light 0 --ch 1 --brightness 80 --temp 5600
+neewer on --ch 1 --light 0
 
-# New commands from APK discovery
-python neewer.py find --light 0                          # flash light to locate
-python neewer.py battery --light 0                       # query battery level
-python neewer.py rgbcw --light 0 --brightness 80 --red 255 --green 0 --blue 128
-python neewer.py xy --light 0 --brightness 80 --x 0.3127 --y 0.3290
-python neewer.py fan --light 0                           # query temp/fan
-python neewer.py fan --light 0 --mode 2                  # set fan mode
+# Commands from APK discovery
+neewer find --light 0                          # flash light to locate
+neewer battery --light 0                       # query battery level
+neewer rgbcw --light 0 --brightness 80 --red 255 --green 0 --blue 128
+neewer xy --light 0 --brightness 80 --x 0.3127 --y 0.3290
+neewer fan --light 0                           # query temp/fan
+neewer fan --light 0 --mode 2                  # set fan mode
 
 # All 35 CLI subcommands
-scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo, interactive, batch, raw, info, preset, group, monitor, effects, gels, sources, colors, channel, find, battery, fan, booster, rgbcw, xy, config, connections, scene-run, scene-list, tui, audio-test
-# REPL-only session commands: bri, temp, hue, fade-color, fade-temp, fade-hue, random, find, battery, fan, booster, rgbcw, xy
+scan, on, off, cct, hsi, scene, gel, source, color, fade, strobe, status, demo,
+interactive, batch, raw, info, preset, group, monitor, effects, gels, sources,
+colors, channel, find, battery, fan, booster, rgbcw, xy, config, connections,
+scene-run, scene-list, tui, audio-test
 ```
 
 ## sACN Bridge
 
-`neewer_sacn.py` bridges sACN (E1.31) DMX data to BLE lights. Each light gets a 10-channel DMX footprint matching the Neewer DMX specs. Supports 4 modes: CCT (0-31), HSI (32-63), FX (64-95), GEL (96-127), and blackout (128+).
+`neewer.sacn` bridges sACN (E1.31) DMX data to BLE lights. Each light gets a 10-channel DMX footprint matching the Neewer DMX specs. Supports 4 modes: CCT (0-31), HSI (32-63), FX (64-95), GEL (96-127), and blackout (128+).
 
 ```bash
-python neewer_sacn.py                           # auto-scan, universe 1, start ch 1
-python neewer_sacn.py -u 2 -s 11               # universe 2, first light at ch 11
-python neewer_sacn.py --channel-mode            # use channel broadcasting (1 BLE conn)
-python neewer_sacn.py --list-channels           # show channel map and exit
-python neewer_sacn.py --verbose                 # debug output for every DMX→BLE translation
+neewer-sacn                             # auto-scan, universe 1, start ch 1
+neewer-sacn -u 2 -s 11                 # universe 2, first light at ch 11
+neewer-sacn --channel-mode             # use channel broadcasting (1 BLE conn)
+neewer-sacn --list-channels            # show channel map and exit
+neewer-sacn --verbose                  # debug output for every DMX→BLE translation
 ```
 
 ## Configuration System
 
-`neewer_config.py` manages persistent multi-group configurations with role-based light assignments, channel auto-management, and state snapshots. Stored in `.neewer_config.json`.
+`neewer.config` manages persistent multi-group configurations with role-based light assignments, channel auto-management, and state snapshots. Stored in `.neewer_config.json`.
 
 ```bash
-python neewer.py config create studio           # create config with random NETID
-python neewer.py config add-light studio key --light 0  # assign role
-python neewer.py config use studio              # set active
-python neewer.py config show studio             # display details
-python neewer.py connections                    # show BLE connections and channel map
-python neewer.py --config studio cct --brightness 80 --temp 5600  # target via config
+neewer config create studio           # create config with random NETID
+neewer config add-light studio key --light 0  # assign role
+neewer config use studio              # set active
+neewer config show studio             # display details
+neewer connections                    # show BLE connections and channel map
+neewer --config studio cct --brightness 80 --temp 5600  # target via config
 ```
 
 ## Scene Engine
 
-`neewer_scenes.py` supports scripted YAML scenes (timed steps with fade interpolation) and generative Python scenes (render() callback). Example scenes in `scenes/`.
+`neewer.scenes` supports scripted YAML scenes (timed steps with fade interpolation) and generative Python scenes (render() callback). Example scenes in `scenes/`.
 
 ```bash
-python neewer.py scene-list                     # list available scenes
-python neewer.py scene-run scenes/sunset-fade.yaml --config studio
-python neewer.py scene-run scenes/rainbow_chase.py --config studio
-python neewer.py scene-run scenes/beat_flash.py --config studio --mic  # audio-reactive
+neewer scene-list                     # list available scenes
+neewer scene-run scenes/sunset-fade.yaml --config studio
+neewer scene-run scenes/rainbow_chase.py --config studio
+neewer scene-run scenes/beat_flash.py --config studio --mic  # audio-reactive
 ```
 
 ## Terminal UI
 
-`neewer_tui.py` provides a Textual-based TUI with three views: Dashboard (light cards), Scene Designer (timeline viewer), Performance Console (faders, hotkeys, audio meter). Requires `pip install -r requirements-tui.txt`.
+`neewer.tui` provides a Textual-based TUI with three views: Dashboard (light cards), Scene Designer (timeline viewer), Performance Console (faders, hotkeys, audio meter).
 
 ```bash
-python neewer.py tui                            # launch TUI
-python neewer_tui.py                            # direct launch
+neewer tui                            # launch TUI
 ```
 
 ## Audio System
 
-`neewer_audio.py` provides audio analysis: RMS amplitude, 3-band FFT (bass/mid/treble), energy-based beat detection with BPM estimation. Pluggable AudioSource base class with MicSource implementation. Requires `pip install -r requirements-audio.txt`.
+`neewer.audio` provides audio analysis: RMS amplitude, 3-band FFT (bass/mid/treble), energy-based beat detection with BPM estimation.
 
 ```bash
-python neewer.py audio-test                     # live mic level display
-python neewer.py audio-test --device 2          # specific audio device
+neewer audio-test                     # live mic level display
+neewer audio-test --device 2          # specific audio device
 ```
 
 ## Tests
 
 ```bash
-/opt/homebrew/Caskroom/miniforge/base/bin/python -m pytest test_protocol.py test_sacn_bridge.py test_config.py test_scenes.py test_audio.py -v
+pytest                    # run all 178 tests
+pytest tests/ -v          # verbose output
+pytest tests/test_protocol.py -v   # single module
 ```
 
 178 tests across 5 test files:
-- `test_protocol.py` (110 tests): protocol builders, checksums, model detection, all 3 variants
-- `test_sacn_bridge.py` (25 tests): sACN-to-BLE translation, channel mode, FX sub-params
-- `test_config.py` (26 tests): config CRUD, snapshots, resolution, channel maps
-- `test_scenes.py` (10 tests): YAML/generative loading, interpolation, scene runner
-- `test_audio.py` (7 tests): RMS, frequency bands, beat detection
+- `tests/test_protocol.py` (110 tests): protocol builders, checksums, model detection, all 3 variants
+- `tests/test_sacn.py` (25 tests): sACN-to-BLE translation, channel mode, FX sub-params
+- `tests/test_config.py` (26 tests): config CRUD, snapshots, resolution, channel maps
+- `tests/test_scenes.py` (10 tests): YAML/generative loading, interpolation, scene runner
+- `tests/test_audio.py` (7 tests): RMS, frequency bands, beat detection
 
 ## Protocol
 
@@ -134,6 +176,20 @@ Key facts:
 - RGBCW (TAG 0xA9) provides direct R/G/B/Cold/Warm white control
 - XY Color (TAG 0xB7) for CIE 1931 chromaticity coordinates
 
+## Internal Imports
+
+```python
+# From within the package (src/neewer/*.py):
+from neewer import protocol as neewer    # protocol functions
+from neewer import config as neewer_config
+from neewer import scenes as neewer_scenes
+from neewer import audio as neewer_audio
+
+# From tests or external code:
+from neewer import protocol as neewer    # direct module access (incl. private names)
+import neewer                            # via __init__.py re-exports (public names only)
+```
+
 ## Prior Art
 
 - **NeewerLite** (macOS Swift): https://github.com/keefo/NeewerLite (cloned in `re_tools/NeewerLite/`)
@@ -144,8 +200,7 @@ Key facts:
 
 - Use fully qualified conda path: `/opt/homebrew/Caskroom/miniforge/base/bin/conda` or activate the environment before running Python scripts.
 - Do not assume `conda` or `python` are on the default PATH.
-- Dependencies: `bleak>=0.21.0`, `sacn>=1.9.0`, `pyyaml>=6.0` (see `requirements.txt`)
-- Optional: `textual>=0.80.0` (TUI, see `requirements-tui.txt`), `numpy>=1.24.0` + `sounddevice>=0.4.6` (audio, see `requirements-audio.txt`)
+- Dependencies managed via `pyproject.toml`: core (`bleak`, `sacn`, `pyyaml`), optional extras `[tui]`, `[audio]`, `[dev]`
 
 ## Key Patterns
 

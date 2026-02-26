@@ -2,7 +2,7 @@
 import os
 import tempfile
 import yaml
-import neewer_scenes
+from neewer import scenes as neewer_scenes
 
 
 def _write_yaml(content):

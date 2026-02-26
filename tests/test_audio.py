@@ -1,6 +1,6 @@
 """Tests for neewer_audio.py — audio analysis."""
 import numpy as np
-import neewer_audio
+from neewer import audio as neewer_audio
 
 
 def test_audio_frame_defaults():
