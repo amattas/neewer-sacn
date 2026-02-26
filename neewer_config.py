@@ -84,6 +84,30 @@ class ConfigStore:
         cfg["channels"].pop(role, None)
         self.save()
 
+    # --- Snapshots ---
+
+    def snapshot_save(self, config_name, snap_name, state):
+        cfg = self._get_config(config_name)
+        cfg["snapshots"][snap_name] = state
+        self.save()
+
+    def snapshot_recall(self, config_name, snap_name):
+        cfg = self._get_config(config_name)
+        if snap_name not in cfg["snapshots"]:
+            raise ValueError(f"Snapshot '{snap_name}' not found in '{config_name}'")
+        return cfg["snapshots"][snap_name]
+
+    def snapshot_delete(self, config_name, snap_name):
+        cfg = self._get_config(config_name)
+        cfg["snapshots"].pop(snap_name, None)
+        self.save()
+
+    def snapshot_list(self, config_name):
+        cfg = self._get_config(config_name)
+        return list(cfg["snapshots"].keys())
+
+    # --- Internal ---
+
     def _get_config(self, name):
         if name not in self.configs:
             raise ValueError(f"Config '{name}' not found")
