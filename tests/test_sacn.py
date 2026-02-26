@@ -1,5 +1,5 @@
 """Tests for neewer_sacn.py — sACN bridge DMX mapping and logic."""
-import neewer_sacn
+from neewer import sacn as neewer_sacn
 
 
 def test_dmx_to_pct():

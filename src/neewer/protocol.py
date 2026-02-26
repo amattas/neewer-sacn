@@ -2520,7 +2520,7 @@ async def main():
 
     # If --config is set and --light is not, resolve first light from config
     if raw_light is None and config_target and args.command not in no_light_commands:
-        import neewer_config as _nc
+        from neewer import config as _nc
         _store = _nc.ConfigStore()
         _cfg_name, _cfg_role = _store.parse_target(config_target)
         _targets = _store.resolve_targets(_cfg_name, role=_cfg_role)
@@ -3405,7 +3405,7 @@ async def main():
         print("Done.")
 
     elif args.command == "config":
-        import neewer_config
+        from neewer import config as neewer_config
         store = neewer_config.ConfigStore()
 
         if args.config_cmd == "create":
@@ -3500,19 +3500,19 @@ async def main():
                   "add-light|remove-light|snapshot}")
 
     elif args.command == "connections":
-        import neewer_config
+        from neewer import config as neewer_config
         store = neewer_config.ConfigStore()
         neewer_config.print_connections(store)
 
     elif args.command == "scene-run":
-        import neewer_scenes
+        from neewer import scenes as neewer_scenes
         scene = neewer_scenes.load_scene(args.file)
         print(f"Scene: {scene.name}")
         print(f"  Type: {'generative' if scene.generative else 'scripted'}")
         if not scene.generative:
             print(f"  Duration: {scene.duration}s, loop: {scene.loop}")
 
-        import neewer_config
+        from neewer import config as neewer_config
         store = neewer_config.ConfigStore()
         cfg_name = args.scene_config or store.active
         if not cfg_name:
@@ -3541,7 +3541,7 @@ async def main():
 
             audio_source = None
             if getattr(args, "mic", False):
-                import neewer_audio
+                from neewer import audio as neewer_audio
                 audio_source = neewer_audio.MicSource(device=args.device)
                 await audio_source.start()
 
@@ -3561,7 +3561,7 @@ async def main():
                          proto_arg=proto_arg)
 
     elif args.command == "scene-list":
-        import neewer_scenes
+        from neewer import scenes as neewer_scenes
         scenes = neewer_scenes.list_scenes()
         if not scenes:
             print("No scenes found. Create .yaml or .py files in scenes/")
@@ -3575,12 +3575,12 @@ async def main():
                     print(f"  {os.path.basename(path):<30s} (error: {e})")
 
     elif args.command == "tui":
-        import neewer_tui
+        from neewer import tui as neewer_tui
         neewer_tui.main()
         return
 
     elif args.command == "audio-test":
-        import neewer_audio
+        from neewer import audio as neewer_audio
         source = neewer_audio.MicSource(device=args.device)
 
         async def run_test():
@@ -3606,9 +3606,14 @@ async def main():
         await run_test()
 
 
-if __name__ == "__main__":
+def main_sync():
+    """Synchronous entry point for console_scripts."""
     try:
         asyncio.run(main())
     except ConnectionError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main_sync()

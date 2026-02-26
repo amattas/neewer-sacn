@@ -32,8 +32,8 @@ import time
 import sacn
 from bleak import BleakClient, BleakScanner
 
-# Import protocol layer from neewer.py
-import neewer
+# Import protocol layer
+from neewer import protocol as neewer
 
 # -- Constants ---------------------------------------------------------------
 

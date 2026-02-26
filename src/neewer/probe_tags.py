@@ -18,7 +18,7 @@ import sys
 
 from bleak import BleakClient, BleakScanner
 
-import neewer
+from neewer import protocol as neewer
 
 # TAGs we already know (don't probe these)
 KNOWN_TAGS = {

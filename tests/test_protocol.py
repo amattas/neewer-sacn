@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Unit tests for Neewer Infinity BLE protocol implementation."""
-import neewer
+from neewer import protocol as neewer
 
 
 def test_checksum():

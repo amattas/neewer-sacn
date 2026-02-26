@@ -9,3 +9,7 @@ __pycache__/
 .neewer_history
 .pytest_cache/
 .claude/
+*.pdf
+*.egg-info/
+dist/
+build/

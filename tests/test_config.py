@@ -2,7 +2,7 @@
 import os
 import json
 import tempfile
-import neewer_config
+from neewer import config as neewer_config
 
 
 def _tmp_store():
