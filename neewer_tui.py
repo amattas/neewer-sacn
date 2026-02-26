@@ -7,7 +7,8 @@ try:
     from textual.app import App, ComposeResult
     from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
     from textual.widgets import (Header, Footer, Static, Button, Label,
-                                  TabbedContent, TabPane, ProgressBar)
+                                  TabbedContent, TabPane, ProgressBar,
+                                  Input, Select, ListView, ListItem)
     from textual.reactive import reactive
     from textual.css.query import NoMatches
 except ImportError:
@@ -181,6 +182,139 @@ class DashboardView(Container):
                     yield Button(snap_name, id=f"snap-{snap_name}", variant="primary")
 
 
+class DesignerView(Container):
+    """Scene designer: load, view timeline, edit steps, preview, save."""
+
+    def __init__(self, store, **kwargs):
+        super().__init__(**kwargs)
+        self.store = store
+        self.scene = None
+        self.scene_path = None
+
+    def compose(self):
+        import neewer_scenes
+        scenes = neewer_scenes.list_scenes()
+        items = [(os.path.basename(p), p) for p in scenes]
+
+        yield Label("Scene Designer", classes="header-info")
+        with Horizontal():
+            with Vertical(classes="scene-sidebar"):
+                yield Label("Scenes:")
+                if items:
+                    yield Select(items, id="scene-select", prompt="Choose scene...")
+                else:
+                    yield Label("No scenes found in scenes/")
+                yield Button("Reload", id="designer-reload")
+            with Vertical(classes="scene-editor", id="scene-editor"):
+                yield Label("Select a scene to edit", id="timeline-display")
+
+    def on_select_changed(self, event):
+        if event.select.id != "scene-select":
+            return
+        import neewer_scenes
+        path = event.value
+        if path is Select.BLANK:
+            return
+        try:
+            self.scene = neewer_scenes.load_scene(path)
+            self.scene_path = path
+            self._render_timeline()
+        except Exception as e:
+            try:
+                self.query_one("#timeline-display", Label).update(f"Error: {e}")
+            except NoMatches:
+                pass
+
+    def _render_timeline(self):
+        if not self.scene:
+            return
+        s = self.scene
+        lines = [f"Name: {s.name}"]
+        if s.generative:
+            lines.append(f"Type: generative  FPS: {s.fps}")
+            lines.append("(Generative scenes cannot be edited here)")
+        else:
+            lines.append(f"Duration: {s.duration}s  Loop: {s.loop}")
+            lines.append(f"Targets: {', '.join(s.target_roles)}")
+            lines.append("")
+            for i, step in enumerate(s.steps):
+                lines.append(f"--- Step {i+1} at {step.time}s ---")
+                for role, params in step.targets.items():
+                    lines.append(f"  {role}: {params}")
+
+        try:
+            self.query_one("#timeline-display", Label).update("\n".join(lines))
+        except NoMatches:
+            pass
+
+
+class FaderWidget(Static):
+    """Vertical fader for brightness/temp control."""
+
+    def __init__(self, role, label, min_val=0, max_val=100, value=50, **kwargs):
+        super().__init__(**kwargs)
+        self.role = role
+        self.fader_label = label
+        self.min_val = min_val
+        self.max_val = max_val
+        self.value = value
+
+    def compose(self):
+        yield Label(f"{self.fader_label}", classes="fader-label")
+        yield ProgressBar(total=self.max_val - self.min_val,
+                         show_eta=False, show_percentage=True,
+                         id=f"fader-bar-{self.role}-{self.fader_label}")
+        with Horizontal():
+            yield Button("-", id=f"fader-down-{self.role}-{self.fader_label}",
+                        classes="fader-btn")
+            yield Label(str(self.value), id=f"fader-val-{self.role}-{self.fader_label}")
+            yield Button("+", id=f"fader-up-{self.role}-{self.fader_label}",
+                        classes="fader-btn")
+
+
+class ConsoleView(Container):
+    """Performance console: faders, hotkeys, scene status."""
+
+    def __init__(self, store, ble, **kwargs):
+        super().__init__(**kwargs)
+        self.store = store
+        self.ble = ble
+
+    def compose(self):
+        yield Label("Performance Console", classes="header-info")
+
+        cfg = self.store.get_active()
+        if not cfg:
+            yield Label("No active config")
+            return
+
+        # Master fader
+        yield Label("Master", classes="section-label")
+        yield FaderWidget("master", "Brightness", 0, 100, 50, classes="fader")
+
+        # Per-role faders
+        with Horizontal(classes="role-faders"):
+            for role in cfg["lights"]:
+                with Vertical(classes="role-column"):
+                    yield Label(role, classes="role-label")
+                    yield FaderWidget(role, "Bri", 0, 100, 50, classes="fader")
+                    yield FaderWidget(role, "Temp", 2500, 10000, 5000, classes="fader")
+
+        # Hotkey buttons
+        yield Label("Quick Actions", classes="section-label")
+        with Horizontal(classes="hotkey-bar"):
+            yield Button("F1: All On", id="hotkey-f1", variant="success")
+            yield Button("F2: All Off", id="hotkey-f2", variant="error")
+            yield Button("F3: Warm", id="hotkey-f3", variant="warning")
+            yield Button("F4: Cool", id="hotkey-f4", variant="primary")
+            yield Button("F5: Scene", id="hotkey-f5")
+            yield Button("F6: Blackout", id="hotkey-f6", variant="error")
+
+        # Scene status
+        yield Label("Now Playing: (none)", id="now-playing", classes="section-label")
+        yield Label("Audio: (not connected)", id="audio-status")
+
+
 class NeewerTUI(App):
     """Neewer light control TUI."""
 
@@ -206,6 +340,34 @@ class NeewerTUI(App):
         height: 1;
         background: $surface;
     }
+    .scene-sidebar {
+        width: 30;
+        border: solid $primary;
+        padding: 1;
+    }
+    .scene-editor {
+        padding: 1;
+    }
+    .section-label {
+        margin: 1 0;
+        text-style: bold;
+    }
+    .role-faders {
+        margin: 1;
+    }
+    .role-column {
+        width: 20;
+        margin: 0 1;
+    }
+    .fader-btn {
+        width: 5;
+    }
+    .fader-label {
+        text-style: italic;
+    }
+    .hotkey-bar {
+        margin: 1;
+    }
     """
 
     BINDINGS = [
@@ -226,9 +388,9 @@ class NeewerTUI(App):
             with TabPane("Dashboard", id="tab-dashboard"):
                 yield DashboardView(self.store)
             with TabPane("Designer", id="tab-designer"):
-                yield Label("Scene Designer — coming soon")
+                yield DesignerView(self.store)
             with TabPane("Console", id="tab-console"):
-                yield Label("Performance Console — coming soon")
+                yield ConsoleView(self.store, self.ble)
         yield Footer()
         yield Label(self._status_text(), classes="status-bar")
 
@@ -268,6 +430,55 @@ class NeewerTUI(App):
         elif btn_id.startswith("snap-"):
             snap = btn_id[5:]
             self.notify(f"Recall snapshot: {snap}")
+        elif btn_id.startswith("fader-up-") or btn_id.startswith("fader-down-"):
+            self._handle_fader(btn_id)
+        elif btn_id.startswith("hotkey-"):
+            self._handle_hotkey(btn_id)
+
+    def _handle_fader(self, btn_id):
+        parts = btn_id.split("-", 3)
+        direction = parts[1]  # up or down
+        role = parts[2]
+        step = 10
+        cfg = self.store.get_active()
+        if not cfg:
+            return
+        roles = list(cfg["lights"].keys()) if role == "master" else [role]
+        for r in roles:
+            asyncio.get_event_loop().create_task(
+                self.ble.send(r, "cct", {"brightness": 50, "temp": 5000}))
+        self.notify(f"Fader {direction}: {role}")
+
+    def _handle_hotkey(self, btn_id):
+        cfg = self.store.get_active()
+        if not cfg:
+            return
+        roles = list(cfg["lights"].keys())
+        if btn_id == "hotkey-f1":
+            for r in roles:
+                asyncio.get_event_loop().create_task(
+                    self.ble.send(r, "power", {"on": True}))
+            self.notify("All ON")
+        elif btn_id == "hotkey-f2":
+            for r in roles:
+                asyncio.get_event_loop().create_task(
+                    self.ble.send(r, "power", {"on": False}))
+            self.notify("All OFF")
+        elif btn_id == "hotkey-f3":
+            for r in roles:
+                asyncio.get_event_loop().create_task(
+                    self.ble.send(r, "cct", {"brightness": 80, "temp": 3200}))
+            self.notify("Warm preset")
+        elif btn_id == "hotkey-f4":
+            for r in roles:
+                asyncio.get_event_loop().create_task(
+                    self.ble.send(r, "cct", {"brightness": 80, "temp": 6500}))
+            self.notify("Cool preset")
+        elif btn_id == "hotkey-f6":
+            for r in roles:
+                asyncio.get_event_loop().create_task(
+                    self.ble.send(r, "power", {"on": False}))
+            self.notify("Blackout")
 
 
 def main():
