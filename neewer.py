@@ -1893,6 +1893,8 @@ def build_parser():
                         help="protocol variant (default: auto-detect from device name)")
     parser.add_argument("--json", action="store_true",
                         help="output in JSON format (for scripting)")
+    parser.add_argument("--config", default=None, dest="config_target",
+                        help="config target (name or name:role) for multi-light control")
     sub = parser.add_subparsers(dest="command")
 
     p_scan = sub.add_parser("scan", help="scan for Neewer lights")
@@ -2497,13 +2499,31 @@ async def main():
     # Commands that don't require --light are handled after this block
     no_light_commands = ("config", "connections")
     raw_light = getattr(args, "light", None)
+    config_target = getattr(args, "config_target", None)
+
+    # If --config is set and --light is not, resolve first light from config
+    if raw_light is None and config_target and args.command not in no_light_commands:
+        import neewer_config as _nc
+        _store = _nc.ConfigStore()
+        _cfg_name, _cfg_role = _store.parse_target(config_target)
+        _targets = _store.resolve_targets(_cfg_name, role=_cfg_role)
+        if not _targets:
+            print(f"ERROR: No lights in config '{_cfg_name}'")
+            return
+        if len(_targets) == 1:
+            raw_light = _targets[0][1]
+        else:
+            # Multiple lights — run command for each sequentially
+            raw_light = _targets[0][1]  # first one for initial resolution
+            # Store remaining targets for later iteration
+            args._config_targets = _targets
 
     if raw_light is not None:
         address, device_name_from_cache = _resolve_light_alias(raw_light)
         device_name = getattr(args, "name", None) or device_name_from_cache
         use_all = address.lower() == "all"
     elif args.command not in no_light_commands:
-        print(f"ERROR: --light is required for '{args.command}'")
+        print(f"ERROR: --light or --config is required for '{args.command}'")
         return
     else:
         address, device_name, use_all = None, None, False
