@@ -23,6 +23,12 @@ full = [
 dev = [
     "neewer-ble[full]",
     "pytest>=7.0",
+    "ruff",
+    "mypy",
+    "types-PyYAML",
+    "bandit",
+    "build",
+    "twine",
 ]
 
 [project.scripts]
@@ -34,3 +40,31 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Lint/type/security config used by the shared python-ci checks (mattas-net/.github).
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+# E402: deferred imports after setup code; E741: short loop names (l); F841: names
+# dict in the effect help text is documentation scaffolding. Tighten in follow-ups.
+ignore = ["E402", "E741", "F841"]
+
+[tool.ruff.lint.per-file-ignores]
+# textual is an optional dependency probed with try/except ImportError.
+"src/neewer/tui.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["sacn", "sounddevice"]
+ignore_missing_imports = true
+
+# B311: random is used for lighting effects, never for security. B110: best-effort
+# cleanup paths intentionally swallow errors.
+[tool.bandit]
+skips = ["B311", "B110"]

@@ -1,0 +1,63 @@
+# Release procedure and the create-release checks: see mattas-net/.github STANDARD.md (Release).
+# Release: bump [project].version in pyproject.toml, merge to main, then
+# Actions -> Release -> Run workflow -> enter that version (bare semver, e.g. 0.2.0
+# or 0.2.0-beta1). create-release.yml verifies the manifest and the passing Checks
+# run on main HEAD, then tags main and creates the GitHub release; python-build.yml
+# builds the tag and verifies the wheel version. Publishing runs in the `pypi`
+# environment (required reviewer gate); PyPI trusted publishing must be registered
+# for workflow `release.yml` + environment `pypi`. The built files are attached to
+# the release after a successful publish. This repo has no docs site (no docs.yml), so
+# there is no final docs job.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (bare semver, e.g. 1.4.2)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    uses: mattas-net/.github/.github/workflows/create-release.yml@main
+    permissions:
+      contents: write
+      actions: read
+    with:
+      version: ${{ inputs.version }}
+      manifest: pyproject.toml
+      require-workflow: Checks
+
+  build:
+    needs: release
+    uses: mattas-net/.github/.github/workflows/python-build.yml@main
+    permissions:
+      contents: read
+    with:
+      ref: ${{ inputs.version }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: pypi # must match the PyPI trusted publisher
+    permissions:
+      contents: write # attach the files to the release
+      id-token: write # trusted publishing
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.version }}
+        run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"
