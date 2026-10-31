@@ -1,5 +1,7 @@
 """Tests for neewer_audio.py — audio analysis."""
+
 import numpy as np
+
 from neewer import audio as neewer_audio
 
 

@@ -3,22 +3,36 @@
 Launch: python neewer_tui.py  or  python neewer.py tui
 Requires: pip install -r requirements-tui.txt
 """
+
 try:
     from textual.app import App, ComposeResult
-    from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
-    from textual.widgets import (Header, Footer, Static, Button, Label,
-                                  TabbedContent, TabPane, ProgressBar,
-                                  Input, Select, ListView, ListItem)
-    from textual.reactive import reactive
+    from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
     from textual.css.query import NoMatches
+    from textual.reactive import reactive
+    from textual.widgets import (
+        Button,
+        Footer,
+        Header,
+        Input,
+        Label,
+        ListItem,
+        ListView,
+        ProgressBar,
+        Select,
+        Static,
+        TabbedContent,
+        TabPane,
+    )
 except ImportError:
     import sys
+
     print("TUI requires textual. Install: pip install -r requirements-tui.txt")
     sys.exit(1)
 
 import asyncio
 import json
 import os
+
 from neewer import config as neewer_config
 
 
@@ -34,8 +48,9 @@ class BLEWorker:
         self._queue = asyncio.Queue()
 
     async def connect(self):
-        from neewer import protocol as neewer
         from bleak import BleakClient
+
+        from neewer import protocol as neewer
 
         cfg_name = self.store.active
         cfg = self.store.get_active()
@@ -60,7 +75,8 @@ class BLEWorker:
             self.client = BleakClient(addr)
             await self.client.connect()
             self.mac_bytes = neewer.parse_mac(
-                cache.get("macs", {}).get(addr, "00:00:00:00:00:00"))
+                cache.get("macs", {}).get(addr, "00:00:00:00:00:00")
+            )
             dname = cache.get("lights", {}).get(addr, {}).get("name", "")
             self.proto = neewer.detect_protocol(dname)
             self.connected = True
@@ -98,19 +114,24 @@ class BLEWorker:
                     if ch is not None:
                         pkt = neewer.ch_cmd_cct(nid, ch, bri, temp, gm)
                     else:
-                        pkt = neewer.build_cct(self.proto, self.mac_bytes, bri, temp, gm)
+                        pkt = neewer.build_cct(
+                            self.proto, self.mac_bytes, bri, temp, gm
+                        )
                 elif mode == "hsi":
                     hue = params.get("hue", 0)
                     sat = params.get("sat", 100)
                     if ch is not None:
                         pkt = neewer.ch_cmd_hsi(nid, ch, hue, sat, bri)
                     else:
-                        pkt = neewer.build_hsi(self.proto, self.mac_bytes, hue, sat, bri)
+                        pkt = neewer.build_hsi(
+                            self.proto, self.mac_bytes, hue, sat, bri
+                        )
                 else:
                     continue
 
                 await self.client.write_gatt_char(
-                    neewer.WRITE_UUID, pkt, response=False)
+                    neewer.WRITE_UUID, pkt, response=False
+                )
             except Exception:
                 self.connected = False
 
@@ -129,9 +150,13 @@ class LightCard(Static):
 
     def compose(self):
         indicator = "●" if self.power else "○"
-        yield Label(f"{indicator} {self.role}: {self.info['alias']}", classes="card-title")
-        yield Label(f"  ch {self.channel} | {self.mode} | bri {self.brightness}%",
-                    id=f"status-{self.role}")
+        yield Label(
+            f"{indicator} {self.role}: {self.info['alias']}", classes="card-title"
+        )
+        yield Label(
+            f"  ch {self.channel} | {self.mode} | bri {self.brightness}%",
+            id=f"status-{self.role}",
+        )
         yield Horizontal(
             Button("On", id=f"on-{self.role}", variant="success"),
             Button("Off", id=f"off-{self.role}", variant="error"),
@@ -193,6 +218,7 @@ class DesignerView(Container):
 
     def compose(self):
         from neewer import scenes as neewer_scenes
+
         scenes = neewer_scenes.list_scenes()
         items = [(os.path.basename(p), p) for p in scenes]
 
@@ -212,6 +238,7 @@ class DesignerView(Container):
         if event.select.id != "scene-select":
             return
         from neewer import scenes as neewer_scenes
+
         path = event.value
         if path is Select.BLANK:
             return
@@ -238,7 +265,7 @@ class DesignerView(Container):
             lines.append(f"Targets: {', '.join(s.target_roles)}")
             lines.append("")
             for i, step in enumerate(s.steps):
-                lines.append(f"--- Step {i+1} at {step.time}s ---")
+                lines.append(f"--- Step {i + 1} at {step.time}s ---")
                 for role, params in step.targets.items():
                     lines.append(f"  {role}: {params}")
 
@@ -261,15 +288,22 @@ class FaderWidget(Static):
 
     def compose(self):
         yield Label(f"{self.fader_label}", classes="fader-label")
-        yield ProgressBar(total=self.max_val - self.min_val,
-                         show_eta=False, show_percentage=True,
-                         id=f"fader-bar-{self.role}-{self.fader_label}")
+        yield ProgressBar(
+            total=self.max_val - self.min_val,
+            show_eta=False,
+            show_percentage=True,
+            id=f"fader-bar-{self.role}-{self.fader_label}",
+        )
         with Horizontal():
-            yield Button("-", id=f"fader-down-{self.role}-{self.fader_label}",
-                        classes="fader-btn")
+            yield Button(
+                "-",
+                id=f"fader-down-{self.role}-{self.fader_label}",
+                classes="fader-btn",
+            )
             yield Label(str(self.value), id=f"fader-val-{self.role}-{self.fader_label}")
-            yield Button("+", id=f"fader-up-{self.role}-{self.fader_label}",
-                        classes="fader-btn")
+            yield Button(
+                "+", id=f"fader-up-{self.role}-{self.fader_label}", classes="fader-btn"
+            )
 
 
 class AudioMeter(Static):
@@ -286,8 +320,10 @@ class AudioMeter(Static):
         beat_str = " \u266a" if self.beat else ""
         bpm_str = f" ~{self.bpm:.0f} BPM" if self.bpm > 0 else ""
         b, m, t = self.bands
-        return (f"Audio: |{bar}| {self.amplitude:.0%}{beat_str}{bpm_str}"
-                f"  B:{b:.2f} M:{m:.2f} T:{t:.2f}")
+        return (
+            f"Audio: |{bar}| {self.amplitude:.0%}{beat_str}{bpm_str}"
+            f"  B:{b:.2f} M:{m:.2f} T:{t:.2f}"
+        )
 
 
 class ConsoleView(Container):
@@ -428,6 +464,7 @@ class NeewerTUI(App):
     async def _audio_loop(self):
         try:
             from neewer import audio as neewer_audio
+
             source = neewer_audio.MicSource()
             await source.start()
         except Exception:
@@ -468,12 +505,14 @@ class NeewerTUI(App):
             role = btn_id[3:]
             self.notify(f"Power ON: {role}")
             asyncio.get_event_loop().create_task(
-                self.ble.send(role, "power", {"on": True}))
+                self.ble.send(role, "power", {"on": True})
+            )
         elif btn_id.startswith("off-"):
             role = btn_id[4:]
             self.notify(f"Power OFF: {role}")
             asyncio.get_event_loop().create_task(
-                self.ble.send(role, "power", {"on": False}))
+                self.ble.send(role, "power", {"on": False})
+            )
         elif btn_id.startswith("snap-"):
             snap = btn_id[5:]
             self.notify(f"Recall snapshot: {snap}")
@@ -486,14 +525,14 @@ class NeewerTUI(App):
         parts = btn_id.split("-", 3)
         direction = parts[1]  # up or down
         role = parts[2]
-        step = 10
         cfg = self.store.get_active()
         if not cfg:
             return
         roles = list(cfg["lights"].keys()) if role == "master" else [role]
         for r in roles:
             asyncio.get_event_loop().create_task(
-                self.ble.send(r, "cct", {"brightness": 50, "temp": 5000}))
+                self.ble.send(r, "cct", {"brightness": 50, "temp": 5000})
+            )
         self.notify(f"Fader {direction}: {role}")
 
     def _handle_hotkey(self, btn_id):
@@ -504,27 +543,32 @@ class NeewerTUI(App):
         if btn_id == "hotkey-f1":
             for r in roles:
                 asyncio.get_event_loop().create_task(
-                    self.ble.send(r, "power", {"on": True}))
+                    self.ble.send(r, "power", {"on": True})
+                )
             self.notify("All ON")
         elif btn_id == "hotkey-f2":
             for r in roles:
                 asyncio.get_event_loop().create_task(
-                    self.ble.send(r, "power", {"on": False}))
+                    self.ble.send(r, "power", {"on": False})
+                )
             self.notify("All OFF")
         elif btn_id == "hotkey-f3":
             for r in roles:
                 asyncio.get_event_loop().create_task(
-                    self.ble.send(r, "cct", {"brightness": 80, "temp": 3200}))
+                    self.ble.send(r, "cct", {"brightness": 80, "temp": 3200})
+                )
             self.notify("Warm preset")
         elif btn_id == "hotkey-f4":
             for r in roles:
                 asyncio.get_event_loop().create_task(
-                    self.ble.send(r, "cct", {"brightness": 80, "temp": 6500}))
+                    self.ble.send(r, "cct", {"brightness": 80, "temp": 6500})
+                )
             self.notify("Cool preset")
         elif btn_id == "hotkey-f6":
             for r in roles:
                 asyncio.get_event_loop().create_task(
-                    self.ble.send(r, "power", {"on": False}))
+                    self.ble.send(r, "power", {"on": False})
+                )
             self.notify("Blackout")
 
 

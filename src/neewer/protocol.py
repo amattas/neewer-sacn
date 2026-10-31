@@ -38,8 +38,8 @@ TAG_CH_SCENE = 0x94
 
 # Network management tags
 TAG_CHANNEL_CONFIG = 0x9F  # Assign/remove light from channel
-TAG_CHANNEL_SET = 0x8C     # Set/query channel on a light
-TAG_NETWORK_EDIT = 0x9B    # Delete light from network
+TAG_CHANNEL_SET = 0x8C  # Set/query channel on a light
+TAG_NETWORK_EDIT = 0x9B  # Delete light from network
 
 # Native Gel (Color Paper) tags
 TAG_GEL_MAC = 0xAD
@@ -55,11 +55,11 @@ TAG_XY_MAC = 0xB7
 TAG_XY_CH = 0xB8
 
 # Utility tags
-TAG_FIND = 0x99       # Flash light to locate
-TAG_BATTERY = 0x95    # Query battery level (same as TAG_HW_INFO)
-TAG_TEMP_FAN = 0xB3   # Query temperature/fan
-TAG_FAN_SET = 0xB4    # Set fan mode
-TAG_BOOSTER = 0xAB    # Enable/disable booster
+TAG_FIND = 0x99  # Flash light to locate
+TAG_BATTERY = 0x95  # Query battery level (same as TAG_HW_INFO)
+TAG_TEMP_FAN = 0xB3  # Query temperature/fan
+TAG_FAN_SET = 0xB4  # Set fan mode
+TAG_BOOSTER = 0xAB  # Enable/disable booster
 TAG_BOOSTER_Q = 0xAC  # Query booster state
 
 # Legacy query commands (no MAC envelope needed)
@@ -104,7 +104,14 @@ EFFECT_PARAMS = {
     0x08: [("brr", 1), ("cct", 1), ("gm", 1), ("speed", 1)],
     0x09: [("brr", 1), ("hue", 2), ("sat", 1), ("speed", 1)],
     0x0A: [("brr", 1), ("color", 1), ("speed", 1)],
-    0x0B: [("brr", 1), ("brr_hi", 1), ("cct", 1), ("gm", 1), ("speed", 1), ("sparks", 1)],
+    0x0B: [
+        ("brr", 1),
+        ("brr_hi", 1),
+        ("cct", 1),
+        ("gm", 1),
+        ("speed", 1),
+        ("sparks", 1),
+    ],
     0x0C: [("brr", 1), ("hue", 2), ("hue_hi", 2), ("speed", 1)],
     0x0D: [("brr", 1), ("cct", 1), ("cct_hi", 1), ("speed", 1)],
     # INT Loop has 2 sub-modes: CCT (submode=0) and HSI (submode=1).
@@ -120,9 +127,17 @@ EFFECT_PARAMS = {
 }
 
 SCENE_DEFAULTS = {
-    "brr": 50, "brr_hi": 100, "cct": 56, "cct_hi": 56,
-    "gm": 50, "hue": 0, "hue_hi": 180, "sat": 100,
-    "color": 0, "speed": 5, "sparks": 5,
+    "brr": 50,
+    "brr_hi": 100,
+    "cct": 56,
+    "cct_hi": 56,
+    "gm": 50,
+    "hue": 0,
+    "hue_hi": 180,
+    "sat": 100,
+    "color": 0,
+    "speed": 5,
+    "sparks": 5,
 }
 
 # Named colors → (hue, saturation) for quick HSI access
@@ -161,64 +176,64 @@ NAMED_COLORS = {
 # Format: "name": ("cct", temp_K, gm) or ("hsi", hue, sat)
 GEL_PRESETS = {
     # ROSCO presets
-    "R38":   ("cct", 3200, -5),    # Rose (warm pink tint)
-    "R44":   ("cct", 3200, -15),   # Medium Rose (stronger pink)
-    "R65":   ("cct", 5600, 0),     # Daylight Blue (CTO to daylight)
-    "R92":   ("cct", 3200, -30),   # Flesh Pink
-    "R93":   ("cct", 3200, -8),    # Rose (lighter)
-    "G152":  ("cct", 4200, 5),     # Pale Gold (warm gold)
-    "G220":  ("cct", 3800, 0),     # White Frost (diffusion, neutral)
-    "G325":  ("cct", 3200, -3),    # Light Rose
-    "G342":  ("cct", 3200, -20),   # Rose Pink
-    "G720":  ("cct", 5000, 10),    # Pale Green (slight green tint)
-    "G910":  ("cct", 3200, 0),     # Light CTO (warm)
-    "G990":  ("cct", 5600, 0),     # Full CTB (cool blue)
-    "E128":  ("cct", 3200, -10),   # Bright Pink
-    "E153":  ("cct", 4400, 5),     # Pale Gold (amber)
-    "E156":  ("cct", 3500, -5),    # Chocolate (warm pink-brown)
-    "E165":  ("cct", 5600, 15),    # Daylight Frost (daylight + green)
-    "E723":  ("cct", 3500, 0),     # Virgin Amber
-    "E724":  ("cct", 3200, 5),     # Ocean Blue
-    "R4590": ("cct", 3200, 0),     # CalColor 90 (warm)
-    "R9406": ("cct", 3200, -5),    # Rose (classic)
+    "R38": ("cct", 3200, -5),  # Rose (warm pink tint)
+    "R44": ("cct", 3200, -15),  # Medium Rose (stronger pink)
+    "R65": ("cct", 5600, 0),  # Daylight Blue (CTO to daylight)
+    "R92": ("cct", 3200, -30),  # Flesh Pink
+    "R93": ("cct", 3200, -8),  # Rose (lighter)
+    "G152": ("cct", 4200, 5),  # Pale Gold (warm gold)
+    "G220": ("cct", 3800, 0),  # White Frost (diffusion, neutral)
+    "G325": ("cct", 3200, -3),  # Light Rose
+    "G342": ("cct", 3200, -20),  # Rose Pink
+    "G720": ("cct", 5000, 10),  # Pale Green (slight green tint)
+    "G910": ("cct", 3200, 0),  # Light CTO (warm)
+    "G990": ("cct", 5600, 0),  # Full CTB (cool blue)
+    "E128": ("cct", 3200, -10),  # Bright Pink
+    "E153": ("cct", 4400, 5),  # Pale Gold (amber)
+    "E156": ("cct", 3500, -5),  # Chocolate (warm pink-brown)
+    "E165": ("cct", 5600, 15),  # Daylight Frost (daylight + green)
+    "E723": ("cct", 3500, 0),  # Virgin Amber
+    "E724": ("cct", 3200, 5),  # Ocean Blue
+    "R4590": ("cct", 3200, 0),  # CalColor 90 (warm)
+    "R9406": ("cct", 3200, -5),  # Rose (classic)
     # LEE presets
-    "L002":  ("cct", 3200, -5),    # Rose Pink
-    "L007":  ("cct", 4000, 5),     # Pale Yellow
-    "L036":  ("cct", 3200, 10),    # Medium Pink (warm-green tint)
-    "L088":  ("hsi", 120, 40),     # Lime Green
-    "L110":  ("cct", 3200, -15),   # Middle Rose
-    "L115":  ("cct", 3000, 0),     # Peacock Blue (deep blue warm)
-    "L117":  ("cct", 5600, 0),     # Steel Blue
-    "L128":  ("cct", 3200, -10),   # Bright Pink
-    "L131":  ("cct", 3800, 10),    # Marine Blue
-    "L148":  ("cct", 3200, -5),    # Bright Rose
-    "L241":  ("cct", 9000, 15),    # Fluorescent 5700K (green spike)
-    "L243":  ("cct", 3200, 20),    # Fluorescent 3600K (green spike)
-    "L500":  ("cct", 4500, 0),     # Double CTO + frost
-    "L701":  ("cct", 3200, 0),     # Zircon Warm Amber
-    "L703":  ("cct", 3200, -3),    # Zircon Warm Rose
-    "L723":  ("cct", 3500, 0),     # Virgin Amber
-    "L724":  ("cct", 3200, 0),     # Ocean Blue
-    "L729":  ("cct", 5200, 0),     # Scuba Blue
-    "L765":  ("cct", 5600, 0),     # Lee Blue
-    "L790":  ("cct", 2700, 0),     # Moroccan Frost (very warm)
+    "L002": ("cct", 3200, -5),  # Rose Pink
+    "L007": ("cct", 4000, 5),  # Pale Yellow
+    "L036": ("cct", 3200, 10),  # Medium Pink (warm-green tint)
+    "L088": ("hsi", 120, 40),  # Lime Green
+    "L110": ("cct", 3200, -15),  # Middle Rose
+    "L115": ("cct", 3000, 0),  # Peacock Blue (deep blue warm)
+    "L117": ("cct", 5600, 0),  # Steel Blue
+    "L128": ("cct", 3200, -10),  # Bright Pink
+    "L131": ("cct", 3800, 10),  # Marine Blue
+    "L148": ("cct", 3200, -5),  # Bright Rose
+    "L241": ("cct", 9000, 15),  # Fluorescent 5700K (green spike)
+    "L243": ("cct", 3200, 20),  # Fluorescent 3600K (green spike)
+    "L500": ("cct", 4500, 0),  # Double CTO + frost
+    "L701": ("cct", 3200, 0),  # Zircon Warm Amber
+    "L703": ("cct", 3200, -3),  # Zircon Warm Rose
+    "L723": ("cct", 3500, 0),  # Virgin Amber
+    "L724": ("cct", 3200, 0),  # Ocean Blue
+    "L729": ("cct", 5200, 0),  # Scuba Blue
+    "L765": ("cct", 5600, 0),  # Lee Blue
+    "L790": ("cct", 2700, 0),  # Moroccan Frost (very warm)
 }
 
 # Light source presets: standard industry light types
 # From NeewerLite lights.json sourcePatterns. These are CCT presets with
 # characteristic color temperatures for different real-world light sources.
 LIGHT_SOURCES = {
-    "tungsten":       (2700, 0, "Tungsten lamp (~2700K)"),
-    "studio-bulb":    (2800, 0, "Studio bulb (~2800K)"),
-    "modeling":       (2900, 0, "Modeling lights (~2900K)"),
-    "halogen":        (3800, 0, "White halogen (~3800K)"),
-    "horizon":        (4500, 0, "Horizon daylight (~4500K)"),
-    "daylight":       (5000, 0, "Daylight (~5000K)"),
-    "dysprosic":      (5100, 0, "Dysprosic lamp (~5100K)"),
-    "hmi":            (5500, 0, "HMI 6000 (~5500K)"),
-    "xenon":          (5700, 0, "Xenon short-arc lamp (~5700K)"),
-    "sunlight":       (6000, 0, "Sunlight (~6000K)"),
-    "cloudy":         (6500, 0, "Cloudy sky (~6500K)"),
+    "tungsten": (2700, 0, "Tungsten lamp (~2700K)"),
+    "studio-bulb": (2800, 0, "Studio bulb (~2800K)"),
+    "modeling": (2900, 0, "Modeling lights (~2900K)"),
+    "halogen": (3800, 0, "White halogen (~3800K)"),
+    "horizon": (4500, 0, "Horizon daylight (~4500K)"),
+    "daylight": (5000, 0, "Daylight (~5000K)"),
+    "dysprosic": (5100, 0, "Dysprosic lamp (~5100K)"),
+    "hmi": (5500, 0, "HMI 6000 (~5500K)"),
+    "xenon": (5700, 0, "Xenon short-arc lamp (~5700K)"),
+    "sunlight": (6000, 0, "Sunlight (~6000K)"),
+    "cloudy": (6500, 0, "Cloudy sky (~6500K)"),
 }
 
 # Model database: product_code → (name, cct_min, cct_max, supports_rgb, protocol)
@@ -332,7 +347,7 @@ def detect_model_info(ble_name):
 
     # NW- prefix: extract product code (e.g., "NW-20220016&776A0500")
     if ble_name.startswith("NW-") and "&" in ble_name:
-        code = ble_name[3:ble_name.index("&")]
+        code = ble_name[3 : ble_name.index("&")]
         if code in MODEL_DB:
             return MODEL_DB[code]
         # Unknown product code, but NW- prefix → assume Infinity
@@ -383,8 +398,10 @@ def detect_protocol(ble_name):
 
 
 # Persistent cache file (MAC addresses + light aliases)
-_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".neewer_cache.json")
-_cache = {"macs": {}, "lights": {}}
+_CACHE_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), ".neewer_cache.json"
+)
+_cache: dict[str, dict] = {"macs": {}, "lights": {}}
 _mac_override = None  # Set via --mac CLI flag
 
 
@@ -516,6 +533,7 @@ def _save_scan_results(lights):
 
 # --- Protocol helpers ---
 
+
 def calc_checksum(data):
     return sum(data) & 0xFF
 
@@ -540,6 +558,7 @@ def fmt_hex(data):
 
 # --- Command builders ---
 
+
 def cmd_power(mac_bytes, on=True):
     return infinity_cmd(TAG_POWER, mac_bytes, SUBTAG_POWER, [0x01 if on else 0x02])
 
@@ -548,8 +567,9 @@ def cmd_cct(mac_bytes, brightness, temp_k, gm=0):
     brightness = max(0, min(100, brightness))
     cct_val = max(25, min(100, temp_k // 100))
     gm_byte = max(0, min(100, gm + 50))
-    return infinity_cmd(TAG_CCT, mac_bytes, SUBTAG_CCT,
-                        [brightness, cct_val, gm_byte, 0x04])
+    return infinity_cmd(
+        TAG_CCT, mac_bytes, SUBTAG_CCT, [brightness, cct_val, gm_byte, 0x04]
+    )
 
 
 def cmd_hsi(mac_bytes, hue, sat, brightness):
@@ -558,8 +578,9 @@ def cmd_hsi(mac_bytes, hue, sat, brightness):
     brightness = max(0, min(100, brightness))
     hue_lo = hue & 0xFF
     hue_hi = (hue >> 8) & 0xFF
-    return infinity_cmd(TAG_HSI, mac_bytes, SUBTAG_HSI,
-                        [hue_lo, hue_hi, sat, brightness, 0x00])
+    return infinity_cmd(
+        TAG_HSI, mac_bytes, SUBTAG_HSI, [hue_lo, hue_hi, sat, brightness, 0x00]
+    )
 
 
 def _parse_gel_brand_num(gel_name):
@@ -569,11 +590,11 @@ def _parse_gel_brand_num(gel_name):
     if not gel_name:
         return None, 0
     prefix = gel_name[0].upper()
-    digits = ''.join(c for c in gel_name[1:] if c.isdigit())
+    digits = "".join(c for c in gel_name[1:] if c.isdigit())
     num = min(255, int(digits)) if digits else 0
-    if prefix in ('R', 'G', 'E'):
+    if prefix in ("R", "G", "E"):
         return 1, num  # ROSCO
-    elif prefix == 'L':
+    elif prefix == "L":
         return 2, num  # LEE
     return None, 0
 
@@ -598,8 +619,8 @@ def cmd_query(mac_bytes):
 
 # Infinity device info tag (discovered via live protocol testing on PL60C)
 TAG_DEVICE_INFO = 0x9E  # Returns model name + firmware info
-TAG_HW_INFO = 0x95      # Returns hardware revision byte via TAG 0x05 response
-TAG_CHANNEL = 0x96      # Returns channel/group assignment byte
+TAG_HW_INFO = 0x95  # Returns hardware revision byte via TAG 0x05 response
+TAG_CHANNEL = 0x96  # Returns channel/group assignment byte
 
 
 def cmd_device_info(mac_bytes):
@@ -619,9 +640,10 @@ def cmd_channel(mac_bytes):
 
 # --- Channel-addressed (group broadcast) command builders ---
 
+
 def channel_cmd(tag, network_id, ch, subtag, params):
     """Build channel-addressed command: 78 TAG LEN NETID[4] CH SUBTAG PARAMS CS"""
-    netid_bytes = list(network_id.to_bytes(4, 'little'))
+    netid_bytes = list(network_id.to_bytes(4, "little"))
     body = netid_bytes + [ch, subtag] + list(params)
     size = len(body)
     pkt = [PREFIX, tag, size] + body
@@ -630,16 +652,22 @@ def channel_cmd(tag, network_id, ch, subtag, params):
 
 
 def ch_cmd_power(network_id, ch, on=True):
-    return channel_cmd(TAG_CH_POWER, network_id, ch, SUBTAG_POWER,
-                       [0x01 if on else 0x02])
+    return channel_cmd(
+        TAG_CH_POWER, network_id, ch, SUBTAG_POWER, [0x01 if on else 0x02]
+    )
 
 
 def ch_cmd_cct(network_id, ch, brightness, temp_k, gm=0, curve=4, dbri=0):
     brightness = max(0, min(100, brightness))
     cct_val = max(25, min(100, temp_k // 100))
     gm_byte = max(0, min(100, gm + 50))
-    return channel_cmd(TAG_CH_CCT, network_id, ch, SUBTAG_CCT,
-                       [brightness, cct_val, gm_byte, curve, dbri])
+    return channel_cmd(
+        TAG_CH_CCT,
+        network_id,
+        ch,
+        SUBTAG_CCT,
+        [brightness, cct_val, gm_byte, curve, dbri],
+    )
 
 
 def ch_cmd_hsi(network_id, ch, hue, sat, brightness):
@@ -648,8 +676,9 @@ def ch_cmd_hsi(network_id, ch, hue, sat, brightness):
     brightness = max(0, min(100, brightness))
     hue_lo = hue & 0xFF
     hue_hi = (hue >> 8) & 0xFF
-    return channel_cmd(TAG_CH_HSI, network_id, ch, SUBTAG_HSI,
-                       [hue_lo, hue_hi, sat, brightness, 0x00])
+    return channel_cmd(
+        TAG_CH_HSI, network_id, ch, SUBTAG_HSI, [hue_lo, hue_hi, sat, brightness, 0x00]
+    )
 
 
 def ch_cmd_scene(network_id, ch, effect_id, brightness=50, speed=5, **kwargs):
@@ -658,7 +687,9 @@ def ch_cmd_scene(network_id, ch, effect_id, brightness=50, speed=5, **kwargs):
         raise ValueError(f"Unknown effect ID: 0x{effect_id:02X}")
     if effect_id == 0x0E:
         params = _build_int_loop_params(brightness, speed, **kwargs)
-        return channel_cmd(TAG_CH_SCENE, network_id, ch, SUBTAG_SCENE, [effect_id] + params)
+        return channel_cmd(
+            TAG_CH_SCENE, network_id, ch, SUBTAG_SCENE, [effect_id] + params
+        )
     overrides = _clamp_scene_kwargs(brightness, speed, kwargs)
     params = _build_scene_params(param_defs, overrides)
     return channel_cmd(TAG_CH_SCENE, network_id, ch, SUBTAG_SCENE, [effect_id] + params)
@@ -666,9 +697,10 @@ def ch_cmd_scene(network_id, ch, effect_id, brightness=50, speed=5, **kwargs):
 
 # --- Network management commands ---
 
+
 def cmd_channel_assign(mac_bytes, ch, network_id):
     """Assign a light to a channel. TAG 0x9F action=1."""
-    netid = list(network_id.to_bytes(4, 'little'))
+    netid = list(network_id.to_bytes(4, "little"))
     data = [PREFIX, TAG_CHANNEL_CONFIG, 0x0C] + mac_bytes + [0x01, ch] + netid
     data.append(calc_checksum(data))
     return bytes(data)
@@ -676,14 +708,18 @@ def cmd_channel_assign(mac_bytes, ch, network_id):
 
 def cmd_channel_remove(mac_bytes, ch):
     """Remove a light from a channel. TAG 0x9F action=2."""
-    data = [PREFIX, TAG_CHANNEL_CONFIG, 0x0C] + mac_bytes + [0x02, ch, 0x00, 0x00, 0x00, 0x00]
+    data = (
+        [PREFIX, TAG_CHANNEL_CONFIG, 0x0C]
+        + mac_bytes
+        + [0x02, ch, 0x00, 0x00, 0x00, 0x00]
+    )
     data.append(calc_checksum(data))
     return bytes(data)
 
 
 def cmd_channel_set(mac_bytes, ch, network_id):
     """Set/query channel on a light. TAG 0x8C."""
-    netid = list(network_id.to_bytes(4, 'little'))
+    netid = list(network_id.to_bytes(4, "little"))
     data = [PREFIX, TAG_CHANNEL_SET, 0x0B] + mac_bytes + [ch] + netid
     data.append(calc_checksum(data))
     return bytes(data)
@@ -697,6 +733,7 @@ def cmd_network_delete(mac_bytes):
 
 
 # --- Native Gel (Color Paper) commands ---
+
 
 def _encode_hue_be(hue):
     """Encode hue as 2-byte big-endian (used by Gel/ColorPaper commands)."""
@@ -722,13 +759,20 @@ def ch_cmd_gel_native(network_id, ch, hue, sat, brightness, brand, gel_num, dbri
     hue_bytes = _encode_hue_be(hue)
     sat = max(0, min(100, sat))
     brightness = max(0, min(100, brightness))
-    netid = list(network_id.to_bytes(4, 'little'))
-    data = [PREFIX, TAG_GEL_CH, 0x0C] + netid + [ch] + hue_bytes + [sat, brightness, dbri, brand, gel_num]
+    netid = list(network_id.to_bytes(4, "little"))
+    data = (
+        [PREFIX, TAG_GEL_CH, 0x0C]
+        + netid
+        + [ch]
+        + hue_bytes
+        + [sat, brightness, dbri, brand, gel_num]
+    )
     data.append(calc_checksum(data))
     return bytes(data)
 
 
 # --- RGBCW commands ---
+
 
 def cmd_rgbcw(mac_bytes, brightness, r, g, b, cold, warm, dbri=0):
     """Direct RGBCW via MAC. TAG 0xA9, SUBTAG 0xA8."""
@@ -738,8 +782,9 @@ def cmd_rgbcw(mac_bytes, brightness, r, g, b, cold, warm, dbri=0):
     b = max(0, min(255, b))
     cold = max(0, min(255, cold))
     warm = max(0, min(255, warm))
-    return infinity_cmd(TAG_RGBCW_MAC, mac_bytes, SUBTAG_RGBCW,
-                        [brightness, r, g, b, cold, warm, dbri])
+    return infinity_cmd(
+        TAG_RGBCW_MAC, mac_bytes, SUBTAG_RGBCW, [brightness, r, g, b, cold, warm, dbri]
+    )
 
 
 def ch_cmd_rgbcw(network_id, ch, brightness, r, g, b, cold, warm, dbri=0):
@@ -750,11 +795,17 @@ def ch_cmd_rgbcw(network_id, ch, brightness, r, g, b, cold, warm, dbri=0):
     b = max(0, min(255, b))
     cold = max(0, min(255, cold))
     warm = max(0, min(255, warm))
-    return channel_cmd(TAG_RGBCW_CH, network_id, ch, SUBTAG_RGBCW,
-                       [brightness, r, g, b, cold, warm, dbri])
+    return channel_cmd(
+        TAG_RGBCW_CH,
+        network_id,
+        ch,
+        SUBTAG_RGBCW,
+        [brightness, r, g, b, cold, warm, dbri],
+    )
 
 
 # --- XY Color Coordinate commands ---
+
 
 def _encode_xy(val):
     """Encode CIE xy coordinate (0.0-1.0) as 2-byte big-endian integer.
@@ -783,13 +834,21 @@ def ch_cmd_xy(network_id, ch, brightness, x, y, dbri=0):
     brightness = max(0, min(100, brightness))
     x_bytes = _encode_xy(x)
     y_bytes = _encode_xy(y)
-    netid = list(network_id.to_bytes(4, 'little'))
-    data = [PREFIX, TAG_XY_CH, 0x0B] + netid + [ch, brightness] + x_bytes + y_bytes + [dbri]
+    netid = list(network_id.to_bytes(4, "little"))
+    data = (
+        [PREFIX, TAG_XY_CH, 0x0B]
+        + netid
+        + [ch, brightness]
+        + x_bytes
+        + y_bytes
+        + [dbri]
+    )
     data.append(calc_checksum(data))
     return bytes(data)
 
 
 # --- Utility commands ---
+
 
 def _mac_cmd(tag, mac_bytes, params=None):
     """Build MAC-addressed command without subtag: 78 TAG SIZE MAC[6] PARAMS CS."""
@@ -847,7 +906,11 @@ def parse_device_info(data):
             model_start = i
         else:
             break
-    model = bytes(payload[model_start:]).decode("ascii", errors="replace") if model_start < len(payload) else ""
+    model = (
+        bytes(payload[model_start:]).decode("ascii", errors="replace")
+        if model_start < len(payload)
+        else ""
+    )
     fields = list(payload[:model_start])
     result = {
         "mac": ":".join(f"{b:02X}" for b in mac),
@@ -863,6 +926,7 @@ def parse_device_info(data):
 
 
 # --- Legacy protocol commands (for older lights without Infinity/MAC) ---
+
 
 def legacy_cmd(tag, params):
     data = [PREFIX, tag, len(params)] + params
@@ -907,6 +971,7 @@ def cmd_scene_legacy(brightness, effect_id):
 
 # --- Extended legacy protocol (GL1C, RGB62 — no MAC, but 17 effects + GM) ---
 # Discovered from BLE packet captures in NeewerLite research.md
+
 
 def cmd_cct_extended(brightness, temp_k, gm=0):
     brightness = max(0, min(100, brightness))
@@ -1029,7 +1094,12 @@ def _build_int_loop_params(brightness, speed, **kwargs):
     Uses HSI if 'hue' is set, otherwise CCT.
     """
     brr = max(0, min(100, brightness))
-    brr_hi = max(0, min(100, kwargs.get("brr_hi", 100) if kwargs.get("brr_hi") is not None else 100))
+    brr_hi = max(
+        0,
+        min(
+            100, kwargs.get("brr_hi", 100) if kwargs.get("brr_hi") is not None else 100
+        ),
+    )
     spd = max(1, min(10, speed))
 
     if "hue" in kwargs and kwargs["hue"] is not None:
@@ -1061,6 +1131,7 @@ def cmd_scene(mac_bytes, effect_id, brightness=50, speed=5, **kwargs):
 # On macOS, BLE devices only appear in system_profiler while actively connected.
 # We must resolve the MAC while holding a BLE connection.
 
+
 async def _resolve_mac_from_profiler(device_name):
     """Resolve hardware MAC from system_profiler (async, non-blocking)."""
     macs = _cache.get("macs", {})
@@ -1073,7 +1144,8 @@ async def _resolve_mac_from_profiler(device_name):
     try:
         # Use async subprocess to avoid blocking the event loop during BLE operations
         proc = await asyncio.create_subprocess_exec(
-            "system_profiler", "SPBluetoothDataType",
+            "system_profiler",
+            "SPBluetoothDataType",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -1105,10 +1177,11 @@ async def _resolve_mac_from_profiler(device_name):
 
 # --- BLE operations ---
 
+
 def _product_code(ble_name):
     """Extract product code from BLE name for dedup (e.g., 'NW-20220016' from 'NW-20220016&776A0500')."""
     if ble_name and ble_name.startswith("NW-") and "&" in ble_name:
-        return ble_name[:ble_name.index("&")]
+        return ble_name[: ble_name.index("&")]
     return ble_name
 
 
@@ -1153,7 +1226,9 @@ def _resolve_proto(proto_arg, device_name):
     return "infinity"
 
 
-async def connect_and_run(address, device_name, callback, verbose=False, retries=2, proto_arg="auto"):
+async def connect_and_run(
+    address, device_name, callback, verbose=False, retries=2, proto_arg="auto"
+):
     """Connect to a light, resolve MAC and protocol, then run callback.
 
     callback signature: async (client, mac_bytes, verbose, proto)
@@ -1186,7 +1261,9 @@ async def connect_and_run(address, device_name, callback, verbose=False, retries
                         # without MAC validation. Use zeros as fallback.
                         mac_str = "00:00:00:00:00:00"
                         if verbose:
-                            print(f"WARNING: Could not resolve MAC, using fallback {mac_str}")
+                            print(
+                                f"WARNING: Could not resolve MAC, using fallback {mac_str}"
+                            )
                 elif not mac_str:
                     mac_str = address
 
@@ -1204,7 +1281,9 @@ async def connect_and_run(address, device_name, callback, verbose=False, retries
             last_err = e
             if attempt < retries:
                 if verbose:
-                    print(f"  Connection attempt {attempt + 1} failed: {e}, retrying...")
+                    print(
+                        f"  Connection attempt {attempt + 1} failed: {e}, retrying..."
+                    )
                 await asyncio.sleep(0.5)
 
     raise ConnectionError(f"Failed to connect to {address}: {last_err}")
@@ -1228,7 +1307,9 @@ async def connect_and_run_all(callback, verbose=False, proto_arg="auto"):
     for name, (device, adv) in unique.items():
         print(f"  -> {name} ({device.address})")
         try:
-            await connect_and_run(device.address, name, callback, verbose, proto_arg=proto_arg)
+            await connect_and_run(
+                device.address, name, callback, verbose, proto_arg=proto_arg
+            )
         except Exception as e:
             print(f"  ERROR: {e}")
 
@@ -1244,13 +1325,15 @@ async def exec_session_cmd(client, mac_bytes, proto, line, device_name=None):
     """
     # Strip inline comments (# at end of line)
     if " #" in line:
-        line = line[:line.index(" #")]
+        line = line[: line.index(" #")]
     parts = line.strip().split()
     if not parts:
         return None
     cmd = parts[0].lower()
     try:
-        return await _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_name)
+        return await _exec_session_cmd_inner(
+            client, mac_bytes, proto, cmd, parts, device_name
+        )
     except ValueError as e:
         print(f"  Invalid value: {e}")
         return "continue"
@@ -1313,7 +1396,9 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         await client.write_gatt_char(WRITE_UUID, s_pkt, response=False)
         name = next((k for k, v in EFFECTS.items() if v == eid), "?")
         extra = " ".join(f"{k}={v}" for k, v in kwargs.items())
-        print(f"  Scene: {name}, bri={b}%, speed={sp}" + (f" ({extra})" if extra else ""))
+        print(
+            f"  Scene: {name}, bri={b}%, speed={sp}" + (f" ({extra})" if extra else "")
+        )
     elif cmd == "gel" and len(parts) >= 3:
         gn = resolve_gel(parts[1])
         if not gn:
@@ -1467,9 +1552,10 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         await client.write_gatt_char(WRITE_UUID, on_power, response=False)
         await asyncio.sleep(0.02)
         await client.write_gatt_char(WRITE_UUID, on_pkt, response=False)
-        print(f"  Strobe complete.")
+        print("  Strobe complete.")
     elif cmd == "random":
         import random
+
         b = int(parts[1]) if len(parts) > 1 else 80
         h = random.randint(0, 359)
         s = random.randint(60, 100)
@@ -1503,16 +1589,26 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             pn = parts[2]
             mode = parts[3].lower()
             if mode == "cct" and len(parts) >= 6:
-                entry = {"mode": "cct", "brightness": int(parts[4]),
-                         "temp": int(parts[5]),
-                         "gm": int(parts[6]) if len(parts) > 6 else 0}
+                entry = {
+                    "mode": "cct",
+                    "brightness": int(parts[4]),
+                    "temp": int(parts[5]),
+                    "gm": int(parts[6]) if len(parts) > 6 else 0,
+                }
             elif mode == "hsi" and len(parts) >= 7:
-                entry = {"mode": "hsi", "brightness": int(parts[6]),
-                         "hue": int(parts[4]), "sat": int(parts[5])}
+                entry = {
+                    "mode": "hsi",
+                    "brightness": int(parts[6]),
+                    "hue": int(parts[4]),
+                    "sat": int(parts[5]),
+                }
             elif mode == "scene" and len(parts) >= 5:
-                entry = {"mode": "scene", "effect": parts[4],
-                         "brightness": int(parts[5]) if len(parts) > 5 else 50,
-                         "speed": int(parts[6]) if len(parts) > 6 else 5}
+                entry = {
+                    "mode": "scene",
+                    "effect": parts[4],
+                    "brightness": int(parts[5]) if len(parts) > 5 else 50,
+                    "speed": int(parts[6]) if len(parts) > 6 else 5,
+                }
             else:
                 print("  Usage: preset save <name> cct <bri> <temp> [gm]")
                 print("         preset save <name> hsi <hue> <sat> <bri>")
@@ -1539,11 +1635,17 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             else:
                 for pn, p in sorted(presets.items()):
                     if p["mode"] == "cct":
-                        print(f"  {pn:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', '?')}K gm={p.get('gm', 0)}")
+                        print(
+                            f"  {pn:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', '?')}K gm={p.get('gm', 0)}"
+                        )
                     elif p["mode"] == "hsi":
-                        print(f"  {pn:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', '?')} sat={p.get('sat', '?')}%")
+                        print(
+                            f"  {pn:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', '?')} sat={p.get('sat', '?')}%"
+                        )
                     elif p["mode"] == "scene":
-                        print(f"  {pn:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}")
+                        print(
+                            f"  {pn:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}"
+                        )
                     else:
                         print(f"  {pn:<16s}  {p['mode']} bri={p['brightness']}%")
             return None
@@ -1553,10 +1655,14 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             return "continue"
         p = presets[pn]
         if p["mode"] == "cct":
-            pkt = build_cct(proto, mac_bytes, p["brightness"], p.get("temp", 5000), p.get("gm", 0))
+            pkt = build_cct(
+                proto, mac_bytes, p["brightness"], p.get("temp", 5000), p.get("gm", 0)
+            )
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
         elif p["mode"] == "hsi":
-            pkt = build_hsi(proto, mac_bytes, p.get("hue", 0), p.get("sat", 100), p["brightness"])
+            pkt = build_hsi(
+                proto, mac_bytes, p.get("hue", 0), p.get("sat", 100), p["brightness"]
+            )
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
         elif p["mode"] == "scene":
             eid = resolve_effect(p.get("effect", "cop-car"))
@@ -1574,6 +1680,7 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
     elif cmd == "status":
         status_result = {}
         sbuf = bytearray()
+
         def _on_status(sender, data):
             nonlocal sbuf
             if sbuf:
@@ -1603,16 +1710,25 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
                             status_result["firmware"] = info["firmware"]
                 elif data[1] == 0x02:
                     status_result["power"] = "ON" if data[3] == 0x01 else "STANDBY"
+
         await client.start_notify(NOTIFY_UUID, _on_status)
         await asyncio.sleep(0.3)
         if proto == "infinity":
-            await client.write_gatt_char(WRITE_UUID, cmd_query(mac_bytes), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, cmd_query(mac_bytes), response=False
+            )
             await asyncio.sleep(0.3)
-            await client.write_gatt_char(WRITE_UUID, cmd_device_info(mac_bytes), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, cmd_device_info(mac_bytes), response=False
+            )
             await asyncio.sleep(0.3)
-            await client.write_gatt_char(WRITE_UUID, cmd_channel(mac_bytes), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, cmd_channel(mac_bytes), response=False
+            )
             await asyncio.sleep(0.3)
-            await client.write_gatt_char(WRITE_UUID, cmd_hw_info(mac_bytes), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, cmd_hw_info(mac_bytes), response=False
+            )
         else:
             await client.write_gatt_char(WRITE_UUID, CMD_POWER_QUERY, response=False)
             await asyncio.sleep(0.3)
@@ -1652,11 +1768,17 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         else:
             for pn, p in sorted(presets.items()):
                 if p["mode"] == "cct":
-                    print(f"  {pn:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', '?')}K gm={p.get('gm', 0)}")
+                    print(
+                        f"  {pn:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', '?')}K gm={p.get('gm', 0)}"
+                    )
                 elif p["mode"] == "hsi":
-                    print(f"  {pn:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', '?')} sat={p.get('sat', '?')}%")
+                    print(
+                        f"  {pn:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', '?')} sat={p.get('sat', '?')}%"
+                    )
                 elif p["mode"] == "scene":
-                    print(f"  {pn:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}")
+                    print(
+                        f"  {pn:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}"
+                    )
                 else:
                     print(f"  {pn:<16s}  {p['mode']} bri={p['brightness']}%")
     elif cmd == "group" and len(parts) >= 2:
@@ -1711,38 +1833,55 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             # CCT sweep
             print("  CCT: warm 2500K -> cool 10000K")
             for temp in [2500, 3200, 4000, 5000, 6500, 8000, 10000]:
-                await client.write_gatt_char(WRITE_UUID,
-                    build_cct(proto, mac_bytes, b, temp), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_cct(proto, mac_bytes, b, temp), response=False
+                )
                 await asyncio.sleep(1.5)
             # HSI color wheel
             print("  HSI: color wheel")
-            names = {0: "red", 60: "yellow", 120: "green",
-                     180: "cyan", 240: "blue", 300: "magenta"}
+            names = {
+                0: "red",
+                60: "yellow",
+                120: "green",
+                180: "cyan",
+                240: "blue",
+                300: "magenta",
+            }
             for hue in [0, 60, 120, 180, 240, 300]:
-                await client.write_gatt_char(WRITE_UUID,
-                    build_hsi(proto, mac_bytes, hue, 100, b), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_hsi(proto, mac_bytes, hue, 100, b), response=False
+                )
                 await asyncio.sleep(1.5)
             # Scene effects
-            for name, eid in [("cop-car", 0x0A), ("candlelight", 0x0B),
-                               ("lightning", 0x01), ("hue-loop", 0x0C)]:
+            for name, eid in [
+                ("cop-car", 0x0A),
+                ("candlelight", 0x0B),
+                ("lightning", 0x01),
+                ("hue-loop", 0x0C),
+            ]:
                 print(f"  Scene: {name}")
-                await client.write_gatt_char(WRITE_UUID,
-                    build_power(proto, mac_bytes, on=False), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_power(proto, mac_bytes, on=False), response=False
+                )
                 await asyncio.sleep(0.05)
-                await client.write_gatt_char(WRITE_UUID,
-                    build_power(proto, mac_bytes, on=True), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_power(proto, mac_bytes, on=True), response=False
+                )
                 await asyncio.sleep(0.05)
-                await client.write_gatt_char(WRITE_UUID,
-                    build_scene(proto, mac_bytes, eid, b, 5), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_scene(proto, mac_bytes, eid, b, 5), response=False
+                )
                 await asyncio.sleep(3.0)
             # Return to neutral
             print("  Returning to neutral white...")
-            await client.write_gatt_char(WRITE_UUID,
-                build_cct(proto, mac_bytes, b, 5000), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, build_cct(proto, mac_bytes, b, 5000), response=False
+            )
         except KeyboardInterrupt:
             print("\n  Stopped. Returning to neutral...")
-            await client.write_gatt_char(WRITE_UUID,
-                build_cct(proto, mac_bytes, b, 5000), response=False)
+            await client.write_gatt_char(
+                WRITE_UUID, build_cct(proto, mac_bytes, b, 5000), response=False
+            )
         print("  Demo done.")
     elif cmd == "find":
         pkt = cmd_find(mac_bytes)
@@ -1750,6 +1889,7 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         print("  Find: flashing light")
     elif cmd == "battery":
         result = {}
+
         def _on_battery(sender, data):
             if len(data) >= 10 and data[0] == PREFIX:
                 val = data[9] if len(data) > 9 else None
@@ -1758,6 +1898,7 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
                         result["battery"] = "charging"
                     else:
                         result["battery"] = f"{val}%"
+
         await client.start_notify(NOTIFY_UUID, _on_battery)
         await asyncio.sleep(0.1)
         pkt = cmd_battery(mac_bytes)
@@ -1772,9 +1913,11 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         subcmd = parts[1].lower()
         if subcmd == "query":
             result = {}
+
             def _on_fan(sender, data):
                 if len(data) >= 10 and data[0] == PREFIX:
                     result["raw"] = fmt_hex(data)
+
             await client.start_notify(NOTIFY_UUID, _on_fan)
             await asyncio.sleep(0.1)
             pkt = cmd_temp_fan_query(mac_bytes)
@@ -1791,7 +1934,9 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             except ValueError:
                 mode = {"off": 0, "auto": 1, "low": 2, "high": 3}.get(subcmd)
                 if mode is None:
-                    print(f"  Unknown fan mode: {subcmd} (use off/auto/low/high or 0-3)")
+                    print(
+                        f"  Unknown fan mode: {subcmd} (use off/auto/low/high or 0-3)"
+                    )
                     return "continue"
             pkt = cmd_fan_set(mac_bytes, mode)
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
@@ -1800,9 +1945,11 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
     elif cmd == "booster" and len(parts) >= 2:
         if parts[1].lower() == "query":
             result = {}
+
             def _on_boost(sender, data):
                 if len(data) >= 10 and data[0] == PREFIX:
                     result["raw"] = fmt_hex(data)
+
             await client.start_notify(NOTIFY_UUID, _on_boost)
             await asyncio.sleep(0.1)
             pkt = cmd_booster_query(mac_bytes)
@@ -1820,7 +1967,13 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
             print(f"  Booster: {'enabled' if enable else 'disabled'}")
     elif cmd == "rgbcw" and len(parts) >= 7:
         bri = int(parts[1])
-        r, g, b_val, cold, warm = int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5]), int(parts[6])
+        r, g, b_val, cold, warm = (
+            int(parts[2]),
+            int(parts[3]),
+            int(parts[4]),
+            int(parts[5]),
+            int(parts[6]),
+        )
         pkt = cmd_rgbcw(mac_bytes, bri, r, g, b_val, cold, warm)
         await client.write_gatt_char(WRITE_UUID, pkt, response=False)
         print(f"  RGBCW: bri={bri}% R={r} G={g} B={b_val} cold={cold} warm={warm}")
@@ -1831,12 +1984,16 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
         await client.write_gatt_char(WRITE_UUID, pkt, response=False)
         print(f"  XY: bri={bri}% x={x:.4f} y={y:.4f}")
     elif cmd == "help":
-        print("  on / off / bri / temp / hue / cct / hsi / scene / gel / source / color / random / raw")
+        print(
+            "  on / off / bri / temp / hue / cct / hsi / scene / gel / source / color / random / raw"
+        )
         print("  fade / fade-color / fade-temp / fade-hue / strobe / demo / info")
         print("  rgbcw / xy / find / battery / fan / booster")
         print("  preset <name> / preset save/delete/list")
         print("  group save/delete/list / groups")
-        print("  sleep <s> / status / effects / gels / sources / colors / presets / quit")
+        print(
+            "  sleep <s> / status / effects / gels / sources / colors / presets / quit"
+        )
     else:
         # Check for known commands with missing args
         usage = {
@@ -1871,13 +2028,21 @@ async def _exec_session_cmd_inner(client, mac_bytes, proto, cmd, parts, device_n
 
 # --- CLI ---
 
+
 def _add_light_args(p, light_required=True, add_ch=True):
-    p.add_argument("--light", required=light_required,
-                   help="BLE address/UUID, or 'all' for all lights")
+    p.add_argument(
+        "--light",
+        required=light_required,
+        help="BLE address/UUID, or 'all' for all lights",
+    )
     p.add_argument("--name", help="BLE device name (from scan)")
     if add_ch:
-        p.add_argument("--ch", type=int, default=None,
-                       help="channel number (for channel-addressed group control)")
+        p.add_argument(
+            "--ch",
+            type=int,
+            default=None,
+            help="channel number (for channel-addressed group control)",
+        )
 
 
 def build_parser():
@@ -1885,21 +2050,37 @@ def build_parser():
         description="Neewer Infinity BLE light controller",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="show raw BLE packets")
-    parser.add_argument("--mac", help="override hardware MAC address (XX:XX:XX:XX:XX:XX)")
-    parser.add_argument("--protocol", choices=["auto", "infinity", "extended", "legacy"],
-                        default="auto",
-                        help="protocol variant (default: auto-detect from device name)")
-    parser.add_argument("--json", action="store_true",
-                        help="output in JSON format (for scripting)")
-    parser.add_argument("--config", default=None, dest="config_target",
-                        help="config target (name or name:role) for multi-light control")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="show raw BLE packets"
+    )
+    parser.add_argument(
+        "--mac", help="override hardware MAC address (XX:XX:XX:XX:XX:XX)"
+    )
+    parser.add_argument(
+        "--protocol",
+        choices=["auto", "infinity", "extended", "legacy"],
+        default="auto",
+        help="protocol variant (default: auto-detect from device name)",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="output in JSON format (for scripting)"
+    )
+    parser.add_argument(
+        "--config",
+        default=None,
+        dest="config_target",
+        help="config target (name or name:role) for multi-light control",
+    )
     sub = parser.add_subparsers(dest="command")
 
     p_scan = sub.add_parser("scan", help="scan for Neewer lights")
-    p_scan.add_argument("-t", "--timeout", type=float, default=5.0,
-                        help="scan duration in seconds (default: 5.0)")
+    p_scan.add_argument(
+        "-t",
+        "--timeout",
+        type=float,
+        default=5.0,
+        help="scan duration in seconds (default: 5.0)",
+    )
 
     for cmd_name, cmd_help in [("on", "turn light on"), ("off", "turn light off")]:
         p = sub.add_parser(cmd_name, help=cmd_help)
@@ -1918,11 +2099,13 @@ def build_parser():
     p_hsi.add_argument("--brightness", type=int, required=True, help="0-100")
     p_hsi.add_argument("--color", help="named color (alternative to --hue/--sat)")
 
-    p_scene = sub.add_parser("scene", help="set scene/effect mode",
-        epilog="Effects: " + ", ".join(sorted(EFFECTS.keys())))
+    p_scene = sub.add_parser(
+        "scene",
+        help="set scene/effect mode",
+        epilog="Effects: " + ", ".join(sorted(EFFECTS.keys())),
+    )
     _add_light_args(p_scene)
-    p_scene.add_argument("--effect", required=True,
-                         help="effect name or ID (1-18)")
+    p_scene.add_argument("--effect", required=True, help="effect name or ID (1-18)")
     p_scene.add_argument("--brightness", type=int, default=50, help="0-100")
     p_scene.add_argument("--speed", type=int, default=5, help="1-10")
     p_scene.add_argument("--temp", type=int, help="CCT in Kelvin (for CCT effects)")
@@ -1931,15 +2114,23 @@ def build_parser():
     p_scene.add_argument("--gm", type=int, help="-50 to 50 (green-magenta)")
     p_scene.add_argument("--color", type=int, help="color preset 0-4")
     p_scene.add_argument("--sparks", type=int, help="sparks/ember 1-10")
-    p_scene.add_argument("--brr-hi", type=int, help="max brightness 0-100 (welding, candlelight, int-loop)")
+    p_scene.add_argument(
+        "--brr-hi",
+        type=int,
+        help="max brightness 0-100 (welding, candlelight, int-loop)",
+    )
 
-    p_gel = sub.add_parser("gel", help="set gel/color filter preset",
-        epilog="Run 'gels' to see all 40 gel presets with descriptions. Codes: " +
-        ", ".join(sorted(GEL_PRESETS.keys())))
+    p_gel = sub.add_parser(
+        "gel",
+        help="set gel/color filter preset",
+        epilog="Run 'gels' to see all 40 gel presets with descriptions. Codes: "
+        + ", ".join(sorted(GEL_PRESETS.keys())),
+    )
     _add_light_args(p_gel)
     p_gel.add_argument("--brightness", type=int, required=True, help="0-100")
-    p_gel.add_argument("--color", required=True,
-                       help="gel name (e.g., R38, L002, G910)")
+    p_gel.add_argument(
+        "--color", required=True, help="gel name (e.g., R38, L002, G910)"
+    )
 
     p_status = sub.add_parser("status", help="query light power status")
     _add_light_args(p_status)
@@ -1948,33 +2139,67 @@ def build_parser():
     _add_light_args(p_demo)
     p_demo.add_argument("--brightness", type=int, default=60, help="0-100")
 
-    p_interactive = sub.add_parser("interactive", help="interactive REPL (stay connected)")
+    p_interactive = sub.add_parser(
+        "interactive", help="interactive REPL (stay connected)"
+    )
     _add_light_args(p_interactive)
 
     p_fade = sub.add_parser("fade", help="smooth fade (brightness, temp, or hue)")
     _add_light_args(p_fade)
-    p_fade.add_argument("--from", dest="bri_from", type=int, required=True, help="start brightness 0-100")
-    p_fade.add_argument("--to", dest="bri_to", type=int, required=True, help="end brightness 0-100")
-    p_fade.add_argument("--temp", type=int, default=5000, help="color temp in K (or start temp for --temp-to)")
-    p_fade.add_argument("--temp-to", type=int, default=None, help="end color temp in K (enables CCT fade)")
-    p_fade.add_argument("--hue", type=int, default=None, help="start hue 0-360 (for HSI fade)")
-    p_fade.add_argument("--hue-to", type=int, default=None, help="end hue 0-360 (enables hue fade)")
-    p_fade.add_argument("--sat", type=int, default=100, help="saturation 0-100 (for HSI fade)")
-    p_fade.add_argument("--duration", type=float, default=2.0, help="fade duration in seconds")
+    p_fade.add_argument(
+        "--from",
+        dest="bri_from",
+        type=int,
+        required=True,
+        help="start brightness 0-100",
+    )
+    p_fade.add_argument(
+        "--to", dest="bri_to", type=int, required=True, help="end brightness 0-100"
+    )
+    p_fade.add_argument(
+        "--temp",
+        type=int,
+        default=5000,
+        help="color temp in K (or start temp for --temp-to)",
+    )
+    p_fade.add_argument(
+        "--temp-to",
+        type=int,
+        default=None,
+        help="end color temp in K (enables CCT fade)",
+    )
+    p_fade.add_argument(
+        "--hue", type=int, default=None, help="start hue 0-360 (for HSI fade)"
+    )
+    p_fade.add_argument(
+        "--hue-to", type=int, default=None, help="end hue 0-360 (enables hue fade)"
+    )
+    p_fade.add_argument(
+        "--sat", type=int, default=100, help="saturation 0-100 (for HSI fade)"
+    )
+    p_fade.add_argument(
+        "--duration", type=float, default=2.0, help="fade duration in seconds"
+    )
 
     p_strobe = sub.add_parser("strobe", help="strobe/flash effect")
     _add_light_args(p_strobe)
     p_strobe.add_argument("--brightness", type=int, default=100, help="0-100")
-    p_strobe.add_argument("--rate", type=float, default=4.0, help="flashes per second (Hz)")
+    p_strobe.add_argument(
+        "--rate", type=float, default=4.0, help="flashes per second (Hz)"
+    )
     p_strobe.add_argument("--count", type=int, default=10, help="number of flashes")
-    p_strobe.add_argument("--color", help="named color or temp in K (default: 5600K white)")
+    p_strobe.add_argument(
+        "--color", help="named color or temp in K (default: 5600K white)"
+    )
 
     p_raw = sub.add_parser("raw", help="send raw hex bytes (for debugging)")
     _add_light_args(p_raw)
     p_raw.add_argument("hex", help="hex bytes to send (e.g., '78 8D 08 ...')")
 
     p_info = sub.add_parser("info", help="show info about a cached light")
-    p_info.add_argument("--light", help="light alias/name/index (optional, shows all if omitted)")
+    p_info.add_argument(
+        "--light", help="light alias/name/index (optional, shows all if omitted)"
+    )
 
     p_preset = sub.add_parser("preset", help="save/recall light presets")
     p_preset_sub = p_preset.add_subparsers(dest="preset_cmd")
@@ -1995,13 +2220,20 @@ def build_parser():
     p_pd = p_preset_sub.add_parser("delete", help="delete a preset")
     p_pd.add_argument("preset_name", help="preset name")
 
-    p_source = sub.add_parser("source", help="set light to a standard light source preset",
-        epilog="Sources: " + ", ".join(sorted(LIGHT_SOURCES.keys())))
+    p_source = sub.add_parser(
+        "source",
+        help="set light to a standard light source preset",
+        epilog="Sources: " + ", ".join(sorted(LIGHT_SOURCES.keys())),
+    )
     _add_light_args(p_source)
-    p_source.add_argument("source_name", help="light source name (e.g., tungsten, daylight)")
+    p_source.add_argument(
+        "source_name", help="light source name (e.g., tungsten, daylight)"
+    )
     p_source.add_argument("--brightness", type=int, default=80, help="0-100")
 
-    p_group = sub.add_parser("group", help="manage light groups (use --light <groupname> to control)")
+    p_group = sub.add_parser(
+        "group", help="manage light groups (use --light <groupname> to control)"
+    )
     p_group_sub = p_group.add_subparsers(dest="group_cmd")
     p_gs = p_group_sub.add_parser("save", help="save a group of lights")
     p_gs.add_argument("group_name", help="group name")
@@ -2010,40 +2242,67 @@ def build_parser():
     p_gd = p_group_sub.add_parser("delete", help="delete a group")
     p_gd.add_argument("group_name", help="group name")
 
-    p_monitor = sub.add_parser("monitor", help="monitor BLE notifications (for debugging)")
+    p_monitor = sub.add_parser(
+        "monitor", help="monitor BLE notifications (for debugging)"
+    )
     _add_light_args(p_monitor)
-    p_monitor.add_argument("--duration", type=float, default=30.0, help="monitoring duration in seconds")
+    p_monitor.add_argument(
+        "--duration", type=float, default=30.0, help="monitoring duration in seconds"
+    )
 
     sub.add_parser("effects", help="list all scene effects")
-    p_color = sub.add_parser("color", help="set a named or hex color",
-        epilog="Colors: " + ", ".join(sorted(NAMED_COLORS.keys())) + ". Also: #RRGGBB hex codes")
+    p_color = sub.add_parser(
+        "color",
+        help="set a named or hex color",
+        epilog="Colors: "
+        + ", ".join(sorted(NAMED_COLORS.keys()))
+        + ". Also: #RRGGBB hex codes",
+    )
     _add_light_args(p_color)
     p_color.add_argument("color_name", help="color name or #hex (e.g., red, #FF8800)")
     p_color.add_argument("--brightness", type=int, default=80, help="0-100")
 
-    p_batch = sub.add_parser("batch", help="run a sequence of commands from a file",
-        epilog="File format: one command per line (same as REPL syntax). Lines starting with # are comments. 'sleep <seconds>' pauses.")
+    p_batch = sub.add_parser(
+        "batch",
+        help="run a sequence of commands from a file",
+        epilog="File format: one command per line (same as REPL syntax). Lines starting with # are comments. 'sleep <seconds>' pauses.",
+    )
     _add_light_args(p_batch)
     p_batch.add_argument("file", help="path to command file")
-    p_batch.add_argument("--loop", type=int, default=1, help="repeat N times (0=forever)")
+    p_batch.add_argument(
+        "--loop", type=int, default=1, help="repeat N times (0=forever)"
+    )
 
     sub.add_parser("gels", help="list all gel presets")
     sub.add_parser("sources", help="list all light source presets")
     sub.add_parser("colors", help="list all named colors")
 
     # --- Channel management ---
-    p_ch = sub.add_parser("channel", help="manage channel-based group control",
-        epilog="Assign lights to channels, then control via --ch flag on any command")
+    p_ch = sub.add_parser(
+        "channel",
+        help="manage channel-based group control",
+        epilog="Assign lights to channels, then control via --ch flag on any command",
+    )
     p_ch_sub = p_ch.add_subparsers(dest="channel_cmd")
     p_ch_assign = p_ch_sub.add_parser("assign", help="assign a light to a channel")
     _add_light_args(p_ch_assign, add_ch=False)
-    p_ch_assign.add_argument("--ch", type=int, required=True, help="channel number (1-255)")
-    p_ch_assign.add_argument("--network-id", type=int, default=None,
-                             help="network ID (auto-generated if not set)")
+    p_ch_assign.add_argument(
+        "--ch", type=int, required=True, help="channel number (1-255)"
+    )
+    p_ch_assign.add_argument(
+        "--network-id",
+        type=int,
+        default=None,
+        help="network ID (auto-generated if not set)",
+    )
     p_ch_remove = p_ch_sub.add_parser("remove", help="remove a light from a channel")
     _add_light_args(p_ch_remove, add_ch=False)
-    p_ch_remove.add_argument("--ch", type=int, required=True, help="channel to remove from")
-    p_ch_reset = p_ch_sub.add_parser("reset", help="delete all network assignments for a light")
+    p_ch_remove.add_argument(
+        "--ch", type=int, required=True, help="channel to remove from"
+    )
+    p_ch_reset = p_ch_sub.add_parser(
+        "reset", help="delete all network assignments for a light"
+    )
     _add_light_args(p_ch_reset, add_ch=False)
     p_ch_sub.add_parser("list", help="list current channel assignments")
 
@@ -2056,7 +2315,9 @@ def build_parser():
 
     p_fan = sub.add_parser("fan", help="query or set fan mode")
     _add_light_args(p_fan)
-    p_fan.add_argument("--mode", type=int, default=None, help="fan mode to set (omit to query)")
+    p_fan.add_argument(
+        "--mode", type=int, default=None, help="fan mode to set (omit to query)"
+    )
 
     p_rgbcw = sub.add_parser("rgbcw", help="set direct RGBCW color")
     _add_light_args(p_rgbcw)
@@ -2069,8 +2330,12 @@ def build_parser():
 
     p_booster = sub.add_parser("booster", help="enable/disable booster mode")
     _add_light_args(p_booster)
-    p_booster.add_argument("--mode", choices=["on", "off", "query"], default="query",
-                           help="on/off/query (default: query)")
+    p_booster.add_argument(
+        "--mode",
+        choices=["on", "off", "query"],
+        default="query",
+        help="on/off/query (default: query)",
+    )
 
     p_xy = sub.add_parser("xy", help="set CIE xy color coordinate")
     _add_light_args(p_xy)
@@ -2130,17 +2395,24 @@ def build_parser():
     # --- Scene commands ---
     p_scene_run = sub.add_parser("scene-run", help="run a scripted or generative scene")
     p_scene_run.add_argument("file", help="path to .yaml or .py scene file")
-    p_scene_run.add_argument("--config", dest="scene_config", default=None,
-                             help="config to target (default: active)")
+    p_scene_run.add_argument(
+        "--config",
+        dest="scene_config",
+        default=None,
+        help="config to target (default: active)",
+    )
     p_scene_run.add_argument("--mic", action="store_true", help="enable audio input")
-    p_scene_run.add_argument("--device", type=int, default=None,
-                             help="audio device index")
+    p_scene_run.add_argument(
+        "--device", type=int, default=None, help="audio device index"
+    )
 
     sub.add_parser("scene-list", help="list available scenes")
 
     sub.add_parser("tui", help="launch terminal UI")
 
-    p_audio = sub.add_parser("audio-test", help="test microphone input (show live levels)")
+    p_audio = sub.add_parser(
+        "audio-test", help="test microphone input (show live levels)"
+    )
     p_audio.add_argument("--device", type=int, default=None, help="audio device index")
 
     return parser
@@ -2172,7 +2444,9 @@ def hex_to_hue_sat(hex_str):
 def resolve_color(name):
     """Resolve named color or hex (#RRGGBB) to (hue, sat) tuple. Returns None if not found."""
     # Try hex color
-    if name.startswith("#") or (len(name) == 6 and all(c in "0123456789abcdefABCDEF" for c in name)):
+    if name.startswith("#") or (
+        len(name) == 6 and all(c in "0123456789abcdefABCDEF" for c in name)
+    ):
         return hex_to_hue_sat(name)
     lower = name.lower().replace(" ", "-").replace("_", "-")
     if lower in NAMED_COLORS:
@@ -2214,7 +2488,9 @@ def resolve_effect(name_or_id):
     return None
 
 
-async def run_command(address, device_name, callback, verbose, use_all=False, proto_arg="auto"):
+async def run_command(
+    address, device_name, callback, verbose, use_all=False, proto_arg="auto"
+):
     """Route to single-light, group, or all-lights execution."""
     if use_all:
         await connect_and_run_all(callback, verbose, proto_arg=proto_arg)
@@ -2226,7 +2502,6 @@ async def run_command(address, device_name, callback, verbose, use_all=False, pr
             print(f"Available groups: {', '.join(sorted(groups.keys())) or '(none)'}")
             return
         members = groups[group_name]
-        lights = _cache.get("lights", {})
         print(f"Sending to group '{group_name}' ({len(members)} light(s))...")
         for member in members:
             # Resolve member — could be a name or address
@@ -2236,11 +2511,15 @@ async def run_command(address, device_name, callback, verbose, use_all=False, pr
                 continue
             print(f"  -> {dname or member} ({addr})")
             try:
-                await connect_and_run(addr, dname, callback, verbose, proto_arg=proto_arg)
+                await connect_and_run(
+                    addr, dname, callback, verbose, proto_arg=proto_arg
+                )
             except Exception as e:
                 print(f"  ERROR: {e}")
     else:
-        await connect_and_run(address, device_name, callback, verbose, proto_arg=proto_arg)
+        await connect_and_run(
+            address, device_name, callback, verbose, proto_arg=proto_arg
+        )
 
 
 async def main():
@@ -2271,8 +2550,10 @@ async def main():
                 name = device.name or adv.local_name or "?"
                 info = detect_model_info(name)
                 entry = {
-                    "index": i, "name": name,
-                    "address": device.address, "rssi": adv.rssi,
+                    "index": i,
+                    "name": name,
+                    "address": device.address,
+                    "rssi": adv.rssi,
                     "protocol": detect_protocol(name),
                 }
                 if info:
@@ -2290,7 +2571,9 @@ async def main():
                 print(f"  [{i}] {name}")
                 if info:
                     model, cmin, cmax, rgb, proto = info
-                    print(f"      Model:    {model} ({'RGB' if rgb else 'CCT'}, {cmin}-{cmax}K)")
+                    print(
+                        f"      Model:    {model} ({'RGB' if rgb else 'CCT'}, {cmin}-{cmax}K)"
+                    )
                     print(f"      Protocol: {proto}")
                 else:
                     print(f"      Protocol: {detect_protocol(name)} (auto-detected)")
@@ -2328,11 +2611,17 @@ async def main():
                 print("Saved presets:\n")
                 for name, p in sorted(presets.items()):
                     if p["mode"] == "cct":
-                        print(f"  {name:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', 5000)}K gm={p.get('gm', 0)}")
+                        print(
+                            f"  {name:<16s}  CCT bri={p['brightness']}% temp={p.get('temp', 5000)}K gm={p.get('gm', 0)}"
+                        )
                     elif p["mode"] == "hsi":
-                        print(f"  {name:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', 0)} sat={p.get('sat', 100)}%")
+                        print(
+                            f"  {name:<16s}  HSI bri={p['brightness']}% hue={p.get('hue', 0)} sat={p.get('sat', 100)}%"
+                        )
                     elif p["mode"] == "scene":
-                        print(f"  {name:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}")
+                        print(
+                            f"  {name:<16s}  Scene {p.get('effect', '?')} bri={p['brightness']}% speed={p.get('speed', 5)}"
+                        )
             return
         elif args.preset_cmd == "delete":
             if pname in presets:
@@ -2358,16 +2647,30 @@ async def main():
 
             async def do_preset(client, mac_bytes, verbose, proto):
                 if p["mode"] == "cct":
-                    pkt = build_cct(proto, mac_bytes, p["brightness"], p.get("temp", 5000), p.get("gm", 0))
+                    pkt = build_cct(
+                        proto,
+                        mac_bytes,
+                        p["brightness"],
+                        p.get("temp", 5000),
+                        p.get("gm", 0),
+                    )
                 elif p["mode"] == "hsi":
-                    pkt = build_hsi(proto, mac_bytes, p.get("hue", 0), p.get("sat", 100), p["brightness"])
+                    pkt = build_hsi(
+                        proto,
+                        mac_bytes,
+                        p.get("hue", 0),
+                        p.get("sat", 100),
+                        p["brightness"],
+                    )
                 elif p["mode"] == "scene":
                     eid = resolve_effect(p.get("effect", "cop-car"))
                     if eid is None:
                         return
                     off = build_power(proto, mac_bytes, on=False)
                     on = build_power(proto, mac_bytes, on=True)
-                    pkt = build_scene(proto, mac_bytes, eid, p["brightness"], p.get("speed", 5))
+                    pkt = build_scene(
+                        proto, mac_bytes, eid, p["brightness"], p.get("speed", 5)
+                    )
                     await client.write_gatt_char(WRITE_UUID, off, response=False)
                     await asyncio.sleep(0.05)
                     await client.write_gatt_char(WRITE_UUID, on, response=False)
@@ -2379,7 +2682,9 @@ async def main():
                     print(f"  TX: {fmt_hex(pkt)}")
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-            await run_command(address, device_name, do_preset, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_preset, args.verbose, use_all, proto_arg
+            )
             print("Done.")
             return
         else:
@@ -2468,8 +2773,12 @@ async def main():
 
     if args.command == "effects":
         print("Scene Effects:\n")
-        print("  Brightness and speed are set via --brightness/--speed (CLI) or positional args (session).")
-        print("  Extra params: --temp, --hue, --sat, --gm, --color, --sparks, --brr-hi (CLI)")
+        print(
+            "  Brightness and speed are set via --brightness/--speed (CLI) or positional args (session)."
+        )
+        print(
+            "  Extra params: --temp, --hue, --sat, --gm, --color, --sparks, --brr-hi (CLI)"
+        )
         print("  or key=value pairs in session/batch: scene cop-car 80 5 color=2\n")
         for name, eid in sorted(EFFECTS.items(), key=lambda x: x[1]):
             params = EFFECT_PARAMS.get(eid, [])
@@ -2477,7 +2786,9 @@ async def main():
             # Show which kwargs are available beyond brr/speed
             extra = [p[0] for p in params if p[0] not in ("brr", "speed")]
             extra_str = f"  kwargs: {', '.join(extra)}" if extra else ""
-            print(f"  {eid:2d} (0x{eid:02X})  {name:<20s}  params: {', '.join(param_names)}{extra_str}")
+            print(
+                f"  {eid:2d} (0x{eid:02X})  {name:<20s}  params: {', '.join(param_names)}{extra_str}"
+            )
         return
 
     if args.command == "gels":
@@ -2513,14 +2824,21 @@ async def main():
         return
 
     # Commands that don't require --light are handled after this block
-    no_light_commands = ("config", "connections", "scene-run", "scene-list", "tui",
-                         "audio-test")
+    no_light_commands = (
+        "config",
+        "connections",
+        "scene-run",
+        "scene-list",
+        "tui",
+        "audio-test",
+    )
     raw_light = getattr(args, "light", None)
     config_target = getattr(args, "config_target", None)
 
     # If --config is set and --light is not, resolve first light from config
     if raw_light is None and config_target and args.command not in no_light_commands:
         from neewer import config as _nc
+
         _store = _nc.ConfigStore()
         _cfg_name, _cfg_role = _store.parse_target(config_target)
         _targets = _store.resolve_targets(_cfg_name, role=_cfg_role)
@@ -2545,7 +2863,9 @@ async def main():
     else:
         address, device_name, use_all = None, None, False
 
-    proto_arg = args.protocol  # "auto" or explicit; resolved per-light in connect_and_run
+    proto_arg = (
+        args.protocol
+    )  # "auto" or explicit; resolved per-light in connect_and_run
 
     ch = getattr(args, "ch", None)
 
@@ -2563,7 +2883,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_power, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_power, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "cct":
@@ -2579,7 +2901,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_cct, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_cct, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "hsi":
@@ -2608,7 +2932,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_hsi, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_hsi, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "scene":
@@ -2616,23 +2942,38 @@ async def main():
         if effect_id is None:
             return
         effect_name = next((k for k, v in EFFECTS.items() if v == effect_id), "?")
-        print(f"Scene: {effect_name}, brightness={args.brightness}%, speed={args.speed}")
+        print(
+            f"Scene: {effect_name}, brightness={args.brightness}%, speed={args.speed}"
+        )
 
         async def do_scene(client, mac_bytes, verbose, proto):
-            scene_kwargs = dict(temp=args.temp, hue=args.hue, sat=args.sat,
-                                gm=args.gm, color=args.color, sparks=args.sparks,
-                                brr_hi=getattr(args, "brr_hi", None))
+            scene_kwargs = dict(
+                temp=args.temp,
+                hue=args.hue,
+                sat=args.sat,
+                gm=args.gm,
+                color=args.color,
+                sparks=args.sparks,
+                brr_hi=getattr(args, "brr_hi", None),
+            )
             if ch is not None:
                 nid = _get_network_id()
                 off_pkt = ch_cmd_power(nid, ch, on=False)
                 on_pkt = ch_cmd_power(nid, ch, on=True)
-                scene_pkt = ch_cmd_scene(nid, ch, effect_id, args.brightness, args.speed,
-                                         **scene_kwargs)
+                scene_pkt = ch_cmd_scene(
+                    nid, ch, effect_id, args.brightness, args.speed, **scene_kwargs
+                )
             else:
                 off_pkt = build_power(proto, mac_bytes, on=False)
                 on_pkt = build_power(proto, mac_bytes, on=True)
-                scene_pkt = build_scene(proto, mac_bytes, effect_id, args.brightness, args.speed,
-                                        **scene_kwargs)
+                scene_pkt = build_scene(
+                    proto,
+                    mac_bytes,
+                    effect_id,
+                    args.brightness,
+                    args.speed,
+                    **scene_kwargs,
+                )
             if verbose:
                 print(f"  TX (off):   {fmt_hex(off_pkt)}")
                 print(f"  TX (on):    {fmt_hex(on_pkt)}")
@@ -2643,7 +2984,9 @@ async def main():
             await asyncio.sleep(0.05)
             await client.write_gatt_char(WRITE_UUID, scene_pkt, response=False)
 
-        await run_command(address, device_name, do_scene, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_scene, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "gel":
@@ -2654,9 +2997,13 @@ async def main():
             return
         preset = GEL_PRESETS[gel_name]
         if preset[0] == "cct":
-            print(f"GEL {gel_name}: CCT {preset[1]}K, GM={preset[2]:+d}, brightness={args.brightness}%")
+            print(
+                f"GEL {gel_name}: CCT {preset[1]}K, GM={preset[2]:+d}, brightness={args.brightness}%"
+            )
         else:
-            print(f"GEL {gel_name}: HSI hue={preset[1]}, sat={preset[2]}%, brightness={args.brightness}%")
+            print(
+                f"GEL {gel_name}: HSI hue={preset[1]}, sat={preset[2]}%, brightness={args.brightness}%"
+            )
 
         async def do_gel(client, mac_bytes, verbose, proto):
             if ch is not None:
@@ -2667,7 +3014,9 @@ async def main():
                         _, hue, sat = preset
                     else:
                         hue, sat = 0, 0
-                    pkt = ch_cmd_gel_native(nid, ch, hue, sat, args.brightness, brand, gel_num)
+                    pkt = ch_cmd_gel_native(
+                        nid, ch, hue, sat, args.brightness, brand, gel_num
+                    )
                 else:
                     # Unknown brand — use CCT/HSI via channel
                     if preset[0] == "cct":
@@ -2682,7 +3031,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_gel, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_gel, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "source":
@@ -2705,7 +3056,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_source, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_source, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "color":
@@ -2728,7 +3081,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_color, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_color, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "status":
@@ -2816,12 +3171,16 @@ async def main():
             else:
                 if verbose:
                     print(f"  TX: {fmt_hex(CMD_POWER_QUERY)}")
-                await client.write_gatt_char(WRITE_UUID, CMD_POWER_QUERY, response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, CMD_POWER_QUERY, response=False
+                )
                 await asyncio.sleep(0.5)
 
                 if verbose:
                     print(f"  TX: {fmt_hex(CMD_READ_REQUEST)}")
-                await client.write_gatt_char(WRITE_UUID, CMD_READ_REQUEST, response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, CMD_READ_REQUEST, response=False
+                )
                 await asyncio.sleep(0.5)
 
             # Give extra time for any late notifications
@@ -2838,7 +3197,9 @@ async def main():
             else:
                 print("  No response received (light may not support status queries)")
 
-        await run_command(address, device_name, do_status, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_status, args.verbose, use_all, proto_arg
+        )
 
     elif args.command == "monitor":
         dur = args.duration
@@ -2852,7 +3213,9 @@ async def main():
                 nonlocal mbuf
                 count[0] += 1
                 ascii_safe = "".join(chr(b) if 32 <= b < 127 else "." for b in data)
-                print(f"  [{count[0]:3d}] ({len(data):2d}b) {fmt_hex(data)}  |{ascii_safe}|")
+                print(
+                    f"  [{count[0]:3d}] ({len(data):2d}b) {fmt_hex(data)}  |{ascii_safe}|"
+                )
 
                 # Fragment reassembly for decoded output
                 if mbuf:
@@ -2868,7 +3231,9 @@ async def main():
                     expected = data[2] + 4
                     if len(data) < expected:
                         mbuf.extend(data)
-                        print(f"        -> (fragment {len(data)}/{expected}b, buffering...)")
+                        print(
+                            f"        -> (fragment {len(data)}/{expected}b, buffering...)"
+                        )
                         return
                     full = data
                 else:
@@ -2886,7 +3251,9 @@ async def main():
                     elif full[1] == 0x08:
                         info = parse_device_info(full)
                         if info:
-                            print(f"        -> Model: {info['model']}, MAC: {info['mac']}")
+                            print(
+                                f"        -> Model: {info['model']}, MAC: {info['mac']}"
+                            )
 
             await client.start_notify(NOTIFY_UUID, on_notify)
             await asyncio.sleep(0.3)
@@ -2907,7 +3274,9 @@ async def main():
             await client.stop_notify(NOTIFY_UUID)
             print(f"\nReceived {count[0]} notification(s).")
 
-        await run_command(address, device_name, do_monitor, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_monitor, args.verbose, use_all, proto_arg
+        )
 
     elif args.command == "demo":
         bri = args.brightness
@@ -2928,14 +3297,27 @@ async def main():
 
                 # HSI color wheel
                 print("  HSI: color wheel")
-                hue_names = {0: "red", 60: "yellow", 120: "green",
-                             180: "cyan", 240: "blue", 300: "magenta"}
+                hue_names = {
+                    0: "red",
+                    60: "yellow",
+                    120: "green",
+                    180: "cyan",
+                    240: "blue",
+                    300: "magenta",
+                }
                 for hue in [0, 60, 120, 180, 240, 300]:
-                    await send(build_hsi(proto, mac_bytes, hue, 100, bri), hue_names.get(hue, ""))
+                    await send(
+                        build_hsi(proto, mac_bytes, hue, 100, bri),
+                        hue_names.get(hue, ""),
+                    )
 
                 # Scene effects sample
-                for name, eid in [("cop-car", 0x0A), ("candlelight", 0x0B),
-                                   ("lightning", 0x01), ("hue-loop", 0x0C)]:
+                for name, eid in [
+                    ("cop-car", 0x0A),
+                    ("candlelight", 0x0B),
+                    ("lightning", 0x01),
+                    ("hue-loop", 0x0C),
+                ]:
                     print(f"  Scene: {name}")
                     off = build_power(proto, mac_bytes, on=False)
                     on = build_power(proto, mac_bytes, on=True)
@@ -2951,10 +3333,13 @@ async def main():
                 await send(build_cct(proto, mac_bytes, bri, 5000), "neutral")
             except KeyboardInterrupt:
                 print("\n  Stopped. Returning to neutral...")
-                await client.write_gatt_char(WRITE_UUID,
-                    build_cct(proto, mac_bytes, bri, 5000), response=False)
+                await client.write_gatt_char(
+                    WRITE_UUID, build_cct(proto, mac_bytes, bri, 5000), response=False
+                )
 
-        await run_command(address, device_name, do_demo, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_demo, args.verbose, use_all, proto_arg
+        )
         print("Demo complete.")
 
     elif args.command == "interactive":
@@ -2964,25 +3349,79 @@ async def main():
             # Enable readline for history and tab completion
             try:
                 import readline
+
                 _REPL_CMDS = [
-                    "on", "off", "bri", "temp", "hue", "cct", "hsi", "scene", "gel", "source",
-                    "color", "fade", "fade-color", "fade-temp", "fade-hue",
-                    "strobe", "random", "raw", "preset", "group", "groups",
-                    "status", "demo", "info", "sleep", "effects", "gels",
-                    "sources", "colors", "presets", "help", "quit",
-                    "find", "battery", "fan", "booster", "rgbcw", "xy",
+                    "on",
+                    "off",
+                    "bri",
+                    "temp",
+                    "hue",
+                    "cct",
+                    "hsi",
+                    "scene",
+                    "gel",
+                    "source",
+                    "color",
+                    "fade",
+                    "fade-color",
+                    "fade-temp",
+                    "fade-hue",
+                    "strobe",
+                    "random",
+                    "raw",
+                    "preset",
+                    "group",
+                    "groups",
+                    "status",
+                    "demo",
+                    "info",
+                    "sleep",
+                    "effects",
+                    "gels",
+                    "sources",
+                    "colors",
+                    "presets",
+                    "help",
+                    "quit",
+                    "find",
+                    "battery",
+                    "fan",
+                    "booster",
+                    "rgbcw",
+                    "xy",
                 ]
                 # Add effect names, color names, source names for completion
-                _REPL_WORDS = _REPL_CMDS + list(EFFECTS.keys()) + list(NAMED_COLORS.keys()) + \
-                    list(LIGHT_SOURCES.keys()) + list(GEL_PRESETS.keys()) + \
-                    ["save", "delete", "list", "query", "off", "auto", "low", "high", "on", "enable", "disable"]
+                _REPL_WORDS = (
+                    _REPL_CMDS
+                    + list(EFFECTS.keys())
+                    + list(NAMED_COLORS.keys())
+                    + list(LIGHT_SOURCES.keys())
+                    + list(GEL_PRESETS.keys())
+                    + [
+                        "save",
+                        "delete",
+                        "list",
+                        "query",
+                        "off",
+                        "auto",
+                        "low",
+                        "high",
+                        "on",
+                        "enable",
+                        "disable",
+                    ]
+                )
+
                 def _completer(text, state):
                     matches = [w for w in _REPL_WORDS if w.startswith(text.lower())]
                     return matches[state] if state < len(matches) else None
+
                 readline.set_completer(_completer)
                 readline.parse_and_bind("tab: complete")
                 # Load history from cache dir
-                hist_path = os.path.join(os.path.dirname(_CACHE_FILE), ".neewer_history")
+                hist_path = os.path.join(
+                    os.path.dirname(_CACHE_FILE), ".neewer_history"
+                )
                 try:
                     readline.read_history_file(hist_path)
                 except FileNotFoundError:
@@ -2994,51 +3433,82 @@ async def main():
             print("Type commands (help for list, quit to exit):\n")
             print("  on / off                      - power control")
             print("  bri <brightness> [temp]       - quick brightness (e.g., bri 80)")
-            print("  temp <temp> [bri] [gm]        - quick temp change (e.g., temp 5600)")
+            print(
+                "  temp <temp> [bri] [gm]        - quick temp change (e.g., temp 5600)"
+            )
             print("  hue <hue> [sat] [bri]         - quick hue change (e.g., hue 240)")
             print("  cct <bri> <temp> [gm]         - CCT mode (e.g., cct 80 5600)")
             print("  hsi <hue> <sat> <bri>         - HSI mode (e.g., hsi 240 100 80)")
-            print("  scene <name> [bri] [speed] [k=v] - effect (e.g., scene cop-car 80 5 color=2)")
+            print(
+                "  scene <name> [bri] [speed] [k=v] - effect (e.g., scene cop-car 80 5 color=2)"
+            )
             print("  gel <name> <bri>              - gel preset (e.g., gel R38 70)")
-            print("  source <name> [bri]           - light source preset (e.g., source daylight 80)")
-            print("  color <name|#hex> [bri]       - named color or hex (e.g., color red 80, color #FF8800 70)")
-            print("  fade <bri1> <bri2> [temp] [s] - fade brightness (e.g., fade 0 100 5000 3)")
-            print("  fade-color <c1> <c2> [bri] [s] - fade between colors (e.g., fade-color red blue 80 3)")
-            print("  fade-temp <t1> <t2> [bri] [s]  - fade CCT (e.g., fade-temp 2500 6500 80 5)")
-            print("  fade-hue <h1> <h2> [sat] [bri] [s] - fade hue (e.g., fade-hue 0 360 100 80 5)")
-            print("  strobe [bri] [hz] [count] [color] - strobe (e.g., strobe 100 4 10 red)")
+            print(
+                "  source <name> [bri]           - light source preset (e.g., source daylight 80)"
+            )
+            print(
+                "  color <name|#hex> [bri]       - named color or hex (e.g., color red 80, color #FF8800 70)"
+            )
+            print(
+                "  fade <bri1> <bri2> [temp] [s] - fade brightness (e.g., fade 0 100 5000 3)"
+            )
+            print(
+                "  fade-color <c1> <c2> [bri] [s] - fade between colors (e.g., fade-color red blue 80 3)"
+            )
+            print(
+                "  fade-temp <t1> <t2> [bri] [s]  - fade CCT (e.g., fade-temp 2500 6500 80 5)"
+            )
+            print(
+                "  fade-hue <h1> <h2> [sat] [bri] [s] - fade hue (e.g., fade-hue 0 360 100 80 5)"
+            )
+            print(
+                "  strobe [bri] [hz] [count] [color] - strobe (e.g., strobe 100 4 10 red)"
+            )
             print("  sleep <seconds>               - pause (e.g., sleep 2)")
             print("  random [bri]                  - random color (e.g., random 80)")
             print("  preset <name>                 - recall saved preset")
             print("  preset save <name> cct <bri> <temp> [gm] - save CCT preset")
             print("  preset save <name> hsi <hue> <sat> <bri> - save HSI preset")
-            print("  preset save <name> scene <effect> [bri] [speed] - save scene preset")
+            print(
+                "  preset save <name> scene <effect> [bri] [speed] - save scene preset"
+            )
             print("  preset delete <name>          - delete preset")
-            print("  raw <hex>                     - send raw bytes (e.g., raw 78 81 01 01 FB)")
+            print(
+                "  raw <hex>                     - send raw bytes (e.g., raw 78 81 01 01 FB)"
+            )
             print("  status                        - query power state")
             print("  demo [bri]                    - cycle through modes")
             print("  info                          - show device details")
-            print("  rgbcw <bri> <R> <G> <B> <cold> <warm> - direct RGBCW (e.g., rgbcw 80 255 0 0 0 0)")
-            print("  xy <bri> <x> <y>              - CIE xy color (e.g., xy 80 0.3127 0.3290)")
+            print(
+                "  rgbcw <bri> <R> <G> <B> <cold> <warm> - direct RGBCW (e.g., rgbcw 80 255 0 0 0 0)"
+            )
+            print(
+                "  xy <bri> <x> <y>              - CIE xy color (e.g., xy 80 0.3127 0.3290)"
+            )
             print("  find                          - flash light to locate it")
             print("  battery                       - query battery level")
             print("  fan <off|auto|low|high|query> - fan control")
             print("  booster <on|off|query>        - booster mode")
             print("  group save/delete/list        - manage light groups")
-            print("  effects / gels / sources / colors / presets / groups - list options")
+            print(
+                "  effects / gels / sources / colors / presets / groups - list options"
+            )
             print()
 
             while True:
                 try:
                     line = await asyncio.get_event_loop().run_in_executor(
-                        None, lambda: input("neewer> "))
+                        None, lambda: input("neewer> ")
+                    )
                 except (EOFError, KeyboardInterrupt):
                     print()
                     break
                 if not line.strip():
                     continue
                 try:
-                    result = await exec_session_cmd(client, mac_bytes, proto, line, device_name)
+                    result = await exec_session_cmd(
+                        client, mac_bytes, proto, line, device_name
+                    )
                     if result == "quit":
                         break
                 except Exception as e:
@@ -3053,7 +3523,9 @@ async def main():
                     pass
             print("Disconnecting...")
 
-        await connect_and_run(address, device_name, do_interactive, args.verbose, proto_arg=proto_arg)
+        await connect_and_run(
+            address, device_name, do_interactive, args.verbose, proto_arg=proto_arg
+        )
 
     elif args.command == "fade":
         bri1, bri2 = args.bri_from, args.bri_to
@@ -3066,7 +3538,9 @@ async def main():
 
         # Determine fade mode
         if hue1 is not None and hue2 is not None:
-            print(f"HSI Fade: bri {bri1}%->{bri2}%, hue {hue1}->{hue2}, sat {sat}% ({dur}s)")
+            print(
+                f"HSI Fade: bri {bri1}%->{bri2}%, hue {hue1}->{hue2}, sat {sat}% ({dur}s)"
+            )
         elif temp2 is not None:
             print(f"CCT Fade: bri {bri1}%->{bri2}%, temp {temp1}K->{temp2}K ({dur}s)")
         else:
@@ -3081,21 +3555,32 @@ async def main():
                 if hue1 is not None and hue2 is not None:
                     hdiff = (hue2 - hue1 + 540) % 360 - 180
                     hue = int(hue1 + hdiff * t) % 360
-                    pkt = ch_cmd_hsi(nid, ch, hue, sat, bri) if ch is not None \
+                    pkt = (
+                        ch_cmd_hsi(nid, ch, hue, sat, bri)
+                        if ch is not None
                         else build_hsi(proto, mac_bytes, hue, sat, bri)
+                    )
                 elif temp2 is not None:
                     temp = int(temp1 + (temp2 - temp1) * t)
-                    pkt = ch_cmd_cct(nid, ch, bri, temp) if ch is not None \
+                    pkt = (
+                        ch_cmd_cct(nid, ch, bri, temp)
+                        if ch is not None
                         else build_cct(proto, mac_bytes, bri, temp)
+                    )
                 else:
-                    pkt = ch_cmd_cct(nid, ch, bri, temp1) if ch is not None \
+                    pkt = (
+                        ch_cmd_cct(nid, ch, bri, temp1)
+                        if ch is not None
                         else build_cct(proto, mac_bytes, bri, temp1)
+                    )
                 if verbose and i % 10 == 0:
                     print(f"  TX: {fmt_hex(pkt)}")
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
                 await asyncio.sleep(dur / steps)
 
-        await run_command(address, device_name, do_fade, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_fade, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "raw":
@@ -3110,7 +3595,9 @@ async def main():
         async def do_raw(client, mac_bytes, verbose, proto):
             await client.write_gatt_char(WRITE_UUID, raw_bytes, response=False)
 
-        await run_command(address, device_name, do_raw, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_raw, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "strobe":
@@ -3126,23 +3613,38 @@ async def main():
             if color_arg:
                 cval = resolve_color(color_arg)
                 if cval:
-                    on_pkt = ch_cmd_hsi(nid, ch, cval[0], cval[1], bri) if ch is not None \
+                    on_pkt = (
+                        ch_cmd_hsi(nid, ch, cval[0], cval[1], bri)
+                        if ch is not None
                         else build_hsi(proto, mac_bytes, cval[0], cval[1], bri)
+                    )
                 else:
                     try:
                         temp = int(color_arg)
-                        on_pkt = ch_cmd_cct(nid, ch, bri, temp) if ch is not None \
+                        on_pkt = (
+                            ch_cmd_cct(nid, ch, bri, temp)
+                            if ch is not None
                             else build_cct(proto, mac_bytes, bri, temp)
+                        )
                     except ValueError:
                         print(f"Unknown color/temp: {color_arg}")
                         return
             else:
-                on_pkt = ch_cmd_cct(nid, ch, bri, 5600) if ch is not None \
+                on_pkt = (
+                    ch_cmd_cct(nid, ch, bri, 5600)
+                    if ch is not None
                     else build_cct(proto, mac_bytes, bri, 5600)
-            off_pkt = ch_cmd_power(nid, ch, on=False) if ch is not None \
+                )
+            off_pkt = (
+                ch_cmd_power(nid, ch, on=False)
+                if ch is not None
                 else build_power(proto, mac_bytes, on=False)
-            on_power = ch_cmd_power(nid, ch, on=True) if ch is not None \
+            )
+            on_power = (
+                ch_cmd_power(nid, ch, on=True)
+                if ch is not None
                 else build_power(proto, mac_bytes, on=True)
+            )
             for i in range(count):
                 await client.write_gatt_char(WRITE_UUID, on_power, response=False)
                 await asyncio.sleep(0.02)
@@ -3155,7 +3657,9 @@ async def main():
             await asyncio.sleep(0.02)
             await client.write_gatt_char(WRITE_UUID, on_pkt, response=False)
 
-        await run_command(address, device_name, do_strobe, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_strobe, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "batch":
@@ -3167,13 +3671,17 @@ async def main():
             print(f"Cannot open batch file: {e}")
             return
         # Filter: skip empty lines and comments
-        commands = [l.strip() for l in lines if l.strip() and not l.strip().startswith("#")]
+        commands = [
+            l.strip() for l in lines if l.strip() and not l.strip().startswith("#")
+        ]
         if not commands:
             print("No commands in batch file.")
             return
 
         loops = args.loop
-        print(f"Batch: {len(commands)} commands, {loops if loops else 'infinite'} loop(s)")
+        print(
+            f"Batch: {len(commands)} commands, {loops if loops else 'infinite'} loop(s)"
+        )
 
         async def do_batch(client, mac_bytes, verbose, proto):
             iteration = 0
@@ -3184,14 +3692,18 @@ async def main():
                         print(f"--- Loop {iteration} ---")
                     for i, line in enumerate(commands):
                         if verbose:
-                            print(f"  [{i+1}/{len(commands)}] {line}")
-                        result = await exec_session_cmd(client, mac_bytes, proto, line, device_name)
+                            print(f"  [{i + 1}/{len(commands)}] {line}")
+                        result = await exec_session_cmd(
+                            client, mac_bytes, proto, line, device_name
+                        )
                         if result == "quit":
                             return
             except KeyboardInterrupt:
                 print("\nBatch interrupted.")
 
-        await run_command(address, device_name, do_batch, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_batch, args.verbose, use_all, proto_arg
+        )
         print("Batch complete.")
 
     elif args.command == "channel":
@@ -3208,11 +3720,15 @@ async def main():
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
                 mac_str = ":".join(f"{b:02X}" for b in mac_bytes)
                 _cache.setdefault("channels", {})[mac_str] = {
-                    "channel": ch_num, "network_id": nid}
+                    "channel": ch_num,
+                    "network_id": nid,
+                }
                 _save_cache()
                 print(f"  Assigned {mac_str} → channel {ch_num}")
 
-            await run_command(address, device_name, do_ch_assign, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_ch_assign, args.verbose, use_all, proto_arg
+            )
             print("Done.")
 
         elif args.channel_cmd == "remove":
@@ -3229,7 +3745,9 @@ async def main():
                 _save_cache()
                 print(f"  Removed {mac_str} from channel {ch_num}")
 
-            await run_command(address, device_name, do_ch_remove, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_ch_remove, args.verbose, use_all, proto_arg
+            )
             print("Done.")
 
         elif args.channel_cmd == "reset":
@@ -3245,7 +3763,9 @@ async def main():
                 _save_cache()
                 print(f"  Reset network for {mac_str}")
 
-            await run_command(address, device_name, do_ch_reset, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_ch_reset, args.verbose, use_all, proto_arg
+            )
             print("Done.")
 
         elif args.channel_cmd == "list":
@@ -3268,10 +3788,13 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_find, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_find, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "battery":
+
         async def do_battery(client, mac_bytes, verbose, proto):
             responses = []
 
@@ -3296,7 +3819,9 @@ async def main():
                     else:
                         print(f"  Battery: {level}%")
 
-        await run_command(address, device_name, do_battery, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_battery, args.verbose, use_all, proto_arg
+        )
 
     elif args.command == "fan":
         if args.mode is not None:
@@ -3308,9 +3833,12 @@ async def main():
                     print(f"  TX: {fmt_hex(pkt)}")
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-            await run_command(address, device_name, do_fan_set, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_fan_set, args.verbose, use_all, proto_arg
+            )
             print("Done.")
         else:
+
             async def do_fan_query(client, mac_bytes, verbose, proto):
                 responses = []
 
@@ -3331,7 +3859,9 @@ async def main():
                 else:
                     print("  No response (command may not be supported)")
 
-            await run_command(address, device_name, do_fan_query, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_fan_query, args.verbose, use_all, proto_arg
+            )
 
     elif args.command == "booster":
         if args.mode in ("on", "off"):
@@ -3344,9 +3874,12 @@ async def main():
                     print(f"  TX: {fmt_hex(pkt)}")
                 await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-            await run_command(address, device_name, do_booster, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_booster, args.verbose, use_all, proto_arg
+            )
             print("Done.")
         else:
+
             async def do_booster_query(client, mac_bytes, verbose, proto):
                 responses = []
 
@@ -3367,7 +3900,9 @@ async def main():
                 else:
                     print("  No response (command may not be supported)")
 
-            await run_command(address, device_name, do_booster_query, args.verbose, use_all, proto_arg)
+            await run_command(
+                address, device_name, do_booster_query, args.verbose, use_all, proto_arg
+            )
 
     elif args.command == "rgbcw":
         r, g, b = args.red, args.green, args.blue
@@ -3384,7 +3919,9 @@ async def main():
                 print(f"  TX: {fmt_hex(pkt)}")
             await client.write_gatt_char(WRITE_UUID, pkt, response=False)
 
-        await run_command(address, device_name, do_rgbcw, args.verbose, use_all, proto_arg)
+        await run_command(
+            address, device_name, do_rgbcw, args.verbose, use_all, proto_arg
+        )
         print("Done.")
 
     elif args.command == "xy":
@@ -3406,12 +3943,15 @@ async def main():
 
     elif args.command == "config":
         from neewer import config as neewer_config
+
         store = neewer_config.ConfigStore()
 
         if args.config_cmd == "create":
             store.create(args.name)
-            print(f"Created config '{args.name}' "
-                  f"(network ID: 0x{store.configs[args.name]['network_id']:08X})")
+            print(
+                f"Created config '{args.name}' "
+                f"(network ID: 0x{store.configs[args.name]['network_id']:08X})"
+            )
         elif args.config_cmd == "delete":
             store.delete(args.name)
             print(f"Deleted config '{args.name}'")
@@ -3462,26 +4002,36 @@ async def main():
                         bri = params.get("brightness", 50)
                         temp = params.get("temp", 5000)
                         gm = params.get("gm", 0)
-                        async def do_cct(client, mac_bytes, verbose, proto,
-                                         _b=bri, _t=temp, _g=gm):
+
+                        async def do_snap_cct(
+                            client, mac_bytes, verbose, proto, _b=bri, _t=temp, _g=gm
+                        ):
                             pkt = build_cct(proto, mac_bytes, _b, _t, _g)
-                            await client.write_gatt_char(WRITE_UUID, pkt,
-                                                         response=False)
+                            await client.write_gatt_char(
+                                WRITE_UUID, pkt, response=False
+                            )
+
                         a, dn = _resolve_light_alias(device)
-                        await run_command(a, dn, do_cct, args.verbose,
-                                          proto_arg=proto_arg)
+                        await run_command(
+                            a, dn, do_snap_cct, args.verbose, proto_arg=proto_arg
+                        )
                     elif mode == "hsi":
                         hue = params.get("hue", 0)
                         sat = params.get("sat", 100)
                         bri = params.get("brightness", 50)
-                        async def do_hsi(client, mac_bytes, verbose, proto,
-                                         _h=hue, _s=sat, _b=bri):
+
+                        async def do_snap_hsi(
+                            client, mac_bytes, verbose, proto, _h=hue, _s=sat, _b=bri
+                        ):
                             pkt = build_hsi(proto, mac_bytes, _h, _s, _b)
-                            await client.write_gatt_char(WRITE_UUID, pkt,
-                                                         response=False)
+                            await client.write_gatt_char(
+                                WRITE_UUID, pkt, response=False
+                            )
+
                         a, dn = _resolve_light_alias(device)
-                        await run_command(a, dn, do_hsi, args.verbose,
-                                          proto_arg=proto_arg)
+                        await run_command(
+                            a, dn, do_snap_hsi, args.verbose, proto_arg=proto_arg
+                        )
                     print(f"  {role}: {mode} applied")
             elif args.snap_cmd == "delete":
                 store.snapshot_delete(args.config, args.name)
@@ -3496,16 +4046,20 @@ async def main():
             else:
                 print("Usage: neewer.py config snapshot {save|recall|delete|list}")
         else:
-            print("Usage: neewer.py config {create|delete|list|show|use|active|"
-                  "add-light|remove-light|snapshot}")
+            print(
+                "Usage: neewer.py config {create|delete|list|show|use|active|"
+                "add-light|remove-light|snapshot}"
+            )
 
     elif args.command == "connections":
         from neewer import config as neewer_config
+
         store = neewer_config.ConfigStore()
         neewer_config.print_connections(store)
 
     elif args.command == "scene-run":
         from neewer import scenes as neewer_scenes
+
         scene = neewer_scenes.load_scene(args.file)
         print(f"Scene: {scene.name}")
         print(f"  Type: {'generative' if scene.generative else 'scripted'}")
@@ -3513,6 +4067,7 @@ async def main():
             print(f"  Duration: {scene.duration}s, loop: {scene.loop}")
 
         from neewer import config as neewer_config
+
         store = neewer_config.ConfigStore()
         cfg_name = args.scene_config or store.active
         if not cfg_name:
@@ -3537,16 +4092,17 @@ async def main():
             lights = {}
             for role, device, ch in targets:
                 lights[role] = neewer_scenes.BLELight(
-                    client, nid, ch, proto, mac_bytes, WRITE_UUID)
+                    client, nid, ch, proto, mac_bytes, WRITE_UUID
+                )
 
             audio_source = None
             if getattr(args, "mic", False):
                 from neewer import audio as neewer_audio
+
                 audio_source = neewer_audio.MicSource(device=args.device)
                 await audio_source.start()
 
-            runner = neewer_scenes.SceneRunner(scene, lights,
-                                               audio_source=audio_source)
+            runner = neewer_scenes.SceneRunner(scene, lights, audio_source=audio_source)
             print("Running... (Ctrl+C to stop)")
             try:
                 await runner.run()
@@ -3557,11 +4113,13 @@ async def main():
                     await audio_source.stop()
                 runner.stop()
 
-        await run_command(relay_addr, relay_dname, run_scene, args.verbose,
-                         proto_arg=proto_arg)
+        await run_command(
+            relay_addr, relay_dname, run_scene, args.verbose, proto_arg=proto_arg
+        )
 
     elif args.command == "scene-list":
         from neewer import scenes as neewer_scenes
+
         scenes = neewer_scenes.list_scenes()
         if not scenes:
             print("No scenes found. Create .yaml or .py files in scenes/")
@@ -3576,11 +4134,13 @@ async def main():
 
     elif args.command == "tui":
         from neewer import tui as neewer_tui
+
         neewer_tui.main()
         return
 
     elif args.command == "audio-test":
         from neewer import audio as neewer_audio
+
         source = neewer_audio.MicSource(device=args.device)
 
         async def run_test():
@@ -3594,9 +4154,12 @@ async def main():
                     beat = " BEAT!" if frame.beat else ""
                     bass, mid, treble = frame.bands
                     bpm_str = f" ~{frame.bpm:.0f} BPM" if frame.bpm > 0 else ""
-                    print(f"\r  Vol: |{bar}| {frame.amplitude:.2f}{beat}{bpm_str}"
-                          f"  B:{bass:.2f} M:{mid:.2f} T:{treble:.2f}    ",
-                          end="", flush=True)
+                    print(
+                        f"\r  Vol: |{bar}| {frame.amplitude:.2f}{beat}{bpm_str}"
+                        f"  B:{bass:.2f} M:{mid:.2f} T:{treble:.2f}    ",
+                        end="",
+                        flush=True,
+                    )
             except asyncio.CancelledError:
                 pass
             finally:

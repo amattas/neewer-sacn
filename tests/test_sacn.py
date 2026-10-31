@@ -1,4 +1,5 @@
 """Tests for neewer_sacn.py — sACN bridge DMX mapping and logic."""
+
 from neewer import sacn as neewer_sacn
 
 
@@ -225,4 +226,5 @@ def test_get_fx_kwargs_candlelight():
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

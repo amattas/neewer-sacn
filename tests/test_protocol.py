@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Unit tests for Neewer Infinity BLE protocol implementation."""
+
 from neewer import protocol as neewer
 
 
@@ -21,20 +22,22 @@ def test_parse_mac():
 def test_infinity_cmd_envelope():
     mac = [0xF7, 0xAC, 0x16, 0xF1, 0x58, 0x96]
     pkt = neewer.infinity_cmd(0x8D, mac, 0x81, [0x01])
-    assert pkt[0] == 0x78        # prefix
-    assert pkt[1] == 0x8D        # tag
-    assert pkt[2] == 0x08        # size = 1 param + 7
+    assert pkt[0] == 0x78  # prefix
+    assert pkt[1] == 0x8D  # tag
+    assert pkt[2] == 0x08  # size = 1 param + 7
     assert list(pkt[3:9]) == mac  # MAC bytes
-    assert pkt[9] == 0x81        # subtag
-    assert pkt[10] == 0x01       # param
-    assert pkt[11] == 0x27       # checksum (sum=0x527, &0xFF=0x27)
-    assert len(pkt) == 12        # total length
+    assert pkt[9] == 0x81  # subtag
+    assert pkt[10] == 0x01  # param
+    assert pkt[11] == 0x27  # checksum (sum=0x527, &0xFF=0x27)
+    assert len(pkt) == 12  # total length
 
 
 def test_power_on():
     mac = [0xF7, 0xAC, 0x16, 0xF1, 0x58, 0x96]
     pkt = neewer.cmd_power(mac, on=True)
-    assert pkt == bytes([0x78, 0x8D, 0x08, 0xF7, 0xAC, 0x16, 0xF1, 0x58, 0x96, 0x81, 0x01, 0x27])
+    assert pkt == bytes(
+        [0x78, 0x8D, 0x08, 0xF7, 0xAC, 0x16, 0xF1, 0x58, 0x96, 0x81, 0x01, 0x27]
+    )
 
 
 def test_power_off():
@@ -47,13 +50,13 @@ def test_power_off():
 def test_cct():
     mac = [0x00] * 6
     pkt = neewer.cmd_cct(mac, brightness=80, temp_k=5600, gm=0)
-    assert pkt[1] == 0x90         # CCT tag
-    assert pkt[2] == 0x0B         # size = 4 + 7
-    assert pkt[9] == 0x87         # CCT subtag
-    assert pkt[10] == 80          # brightness
-    assert pkt[11] == 56          # 5600K / 100
-    assert pkt[12] == 50          # gm=0 → 0+50=50
-    assert pkt[13] == 0x04        # dimming curve
+    assert pkt[1] == 0x90  # CCT tag
+    assert pkt[2] == 0x0B  # size = 4 + 7
+    assert pkt[9] == 0x87  # CCT subtag
+    assert pkt[10] == 80  # brightness
+    assert pkt[11] == 56  # 5600K / 100
+    assert pkt[12] == 50  # gm=0 → 0+50=50
+    assert pkt[13] == 0x04  # dimming curve
     assert len(pkt) == 15
 
 
@@ -82,14 +85,14 @@ def test_cct_range_clamp():
 def test_hsi():
     mac = [0x00] * 6
     pkt = neewer.cmd_hsi(mac, hue=240, sat=100, brightness=80)
-    assert pkt[1] == 0x8F          # HSI tag
-    assert pkt[2] == 0x0C          # size = 5 + 7
-    assert pkt[9] == 0x86          # HSI subtag
-    assert pkt[10] == 0xF0         # hue_lo: 240 & 0xFF
-    assert pkt[11] == 0x00         # hue_hi: 240 >> 8
-    assert pkt[12] == 100          # saturation
-    assert pkt[13] == 80           # brightness
-    assert pkt[14] == 0x00         # trailing byte
+    assert pkt[1] == 0x8F  # HSI tag
+    assert pkt[2] == 0x0C  # size = 5 + 7
+    assert pkt[9] == 0x86  # HSI subtag
+    assert pkt[10] == 0xF0  # hue_lo: 240 & 0xFF
+    assert pkt[11] == 0x00  # hue_hi: 240 >> 8
+    assert pkt[12] == 100  # saturation
+    assert pkt[13] == 80  # brightness
+    assert pkt[14] == 0x00  # trailing byte
     assert len(pkt) == 16
 
 
@@ -114,31 +117,31 @@ def test_hsi_hue_encoding():
 def test_scene_cop_car():
     mac = [0x00] * 6
     pkt = neewer.cmd_scene(mac, 0x0A, brightness=80, speed=5)
-    assert pkt[1] == 0x91    # scene tag
-    assert pkt[9] == 0x8B    # scene subtag
-    assert pkt[10] == 0x0A   # effect ID
-    assert pkt[11] == 80     # brightness
-    assert pkt[12] == 0      # color (default)
-    assert pkt[13] == 5      # speed
+    assert pkt[1] == 0x91  # scene tag
+    assert pkt[9] == 0x8B  # scene subtag
+    assert pkt[10] == 0x0A  # effect ID
+    assert pkt[11] == 80  # brightness
+    assert pkt[12] == 0  # color (default)
+    assert pkt[13] == 5  # speed
 
 
 def test_scene_candlelight():
     mac = [0x00] * 6
     pkt = neewer.cmd_scene(mac, 0x0B, brightness=60, speed=3, sparks=7)
     assert pkt[10] == 0x0B  # effect ID
-    assert pkt[11] == 60    # brr
+    assert pkt[11] == 60  # brr
     # brr_hi=100, cct=56, gm=50, speed=3, sparks=7
 
 
 def test_scene_hue_flash():
     mac = [0x00] * 6
     pkt = neewer.cmd_scene(mac, 0x07, brightness=80, speed=5, hue=120, sat=100)
-    assert pkt[10] == 0x07   # effect ID
-    assert pkt[11] == 80     # brr
-    assert pkt[12] == 120    # hue_lo
-    assert pkt[13] == 0      # hue_hi
-    assert pkt[14] == 100    # sat
-    assert pkt[15] == 5      # speed
+    assert pkt[10] == 0x07  # effect ID
+    assert pkt[11] == 80  # brr
+    assert pkt[12] == 120  # hue_lo
+    assert pkt[13] == 0  # hue_hi
+    assert pkt[14] == 100  # sat
+    assert pkt[15] == 5  # speed
 
 
 def test_all_effects_valid():
@@ -156,7 +159,7 @@ def test_gel_cct_preset():
     mac = [0x00] * 6
     pkt = neewer.cmd_gel(mac, 70, "R38")
     assert pkt[1] == 0x90  # CCT command
-    assert pkt[10] == 70   # brightness
+    assert pkt[10] == 70  # brightness
 
 
 def test_gel_hsi_preset():
@@ -279,8 +282,8 @@ def test_legacy_cct():
     assert pkt[0] == 0x78
     assert pkt[1] == 0x87
     assert pkt[2] == 0x02  # 2 params
-    assert pkt[3] == 50    # brightness
-    assert pkt[4] == 56    # 5600/100
+    assert pkt[3] == 50  # brightness
+    assert pkt[4] == 56  # 5600/100
     assert pkt[5] == neewer.calc_checksum(pkt[:-1])
     assert len(pkt) == 6
 
@@ -292,8 +295,8 @@ def test_legacy_hsi():
     assert pkt[2] == 0x04  # 4 params
     assert pkt[3] == 0xF0  # hue_lo
     assert pkt[4] == 0x00  # hue_hi
-    assert pkt[5] == 100   # sat
-    assert pkt[6] == 80    # brightness
+    assert pkt[5] == 100  # sat
+    assert pkt[6] == 80  # brightness
     assert len(pkt) == 8
 
 
@@ -302,7 +305,7 @@ def test_legacy_scene():
     assert pkt[0] == 0x78
     assert pkt[1] == 0x88
     assert pkt[3] == 50  # brightness
-    assert pkt[4] == 5   # effect
+    assert pkt[4] == 5  # effect
     assert len(pkt) == 6
 
 
@@ -344,7 +347,7 @@ def test_scene_param_clamping():
     # Hue clamped to 0-359
     pkt = neewer.cmd_scene(mac, 0x07, brightness=50, speed=5, hue=500, sat=100)
     assert pkt[12] == (359 & 0xFF)  # hue_lo of 359
-    assert pkt[13] == (359 >> 8)    # hue_hi of 359
+    assert pkt[13] == (359 >> 8)  # hue_hi of 359
 
 
 def test_build_power_protocols():
@@ -540,12 +543,12 @@ def test_light_sources():
 def test_cmd_query():
     mac = [0xD4, 0xED, 0x61, 0xC3, 0xB7, 0x00]
     pkt = neewer.cmd_query(mac)
-    assert pkt[0] == 0x78           # prefix
+    assert pkt[0] == 0x78  # prefix
     assert pkt[1] == neewer.TAG_QUERY  # 0x8E
-    assert pkt[2] == 0x08           # size = 1+7
-    assert list(pkt[3:9]) == mac    # MAC
-    assert pkt[9] == 0x84           # subtag
-    assert pkt[10] == 0x00          # param
+    assert pkt[2] == 0x08  # size = 1+7
+    assert list(pkt[3:9]) == mac  # MAC
+    assert pkt[9] == 0x84  # subtag
+    assert pkt[10] == 0x00  # param
     assert pkt[11] == neewer.calc_checksum(list(pkt[:-1]))
 
     # Device info query
@@ -556,8 +559,30 @@ def test_cmd_query():
 
 def test_parse_device_info():
     # Real PL60C response: 78 08 10 D4 ED 61 C3 B7 00 01 09 01 03 03 01 50 4C 36 30 40
-    data = bytes([0x78, 0x08, 0x10, 0xD4, 0xED, 0x61, 0xC3, 0xB7, 0x00,
-                  0x01, 0x09, 0x01, 0x03, 0x03, 0x01, 0x50, 0x4C, 0x36, 0x30, 0x40])
+    data = bytes(
+        [
+            0x78,
+            0x08,
+            0x10,
+            0xD4,
+            0xED,
+            0x61,
+            0xC3,
+            0xB7,
+            0x00,
+            0x01,
+            0x09,
+            0x01,
+            0x03,
+            0x03,
+            0x01,
+            0x50,
+            0x4C,
+            0x36,
+            0x30,
+            0x40,
+        ]
+    )
     result = neewer.parse_device_info(data)
     assert result is not None
     assert result["model"] == "PL60"
@@ -636,7 +661,7 @@ def test_product_code():
     assert neewer._product_code("") == ""
 
 
-def test_resolve_gel():
+def test_resolve_gel_names():
     # Direct name match (uppercase)
     assert neewer.resolve_gel("R38") == "R38"
     assert neewer.resolve_gel("L002") == "L002"
@@ -649,7 +674,7 @@ def test_resolve_gel():
     assert neewer.resolve_gel("ZZZZ") is None
 
 
-def test_resolve_effect():
+def test_resolve_effect_names():
     # Name resolution
     assert neewer.resolve_effect("cop-car") == 0x0A
     assert neewer.resolve_effect("lightning") == 0x01
@@ -661,13 +686,30 @@ def test_resolve_effect():
 
 def test_parse_device_info_live():
     """Parse real device info response from PL60C hardware test."""
-    raw = bytes([
-        0x78, 0x08, 0x10,
-        0xD4, 0xED, 0x61, 0xC3, 0xB7, 0x00,  # MAC
-        0x01, 0x09, 0x01, 0x03, 0x03, 0x01,  # firmware fields
-        0x50, 0x4C, 0x36, 0x30,  # "PL60"
-        0x40  # checksum
-    ])
+    raw = bytes(
+        [
+            0x78,
+            0x08,
+            0x10,
+            0xD4,
+            0xED,
+            0x61,
+            0xC3,
+            0xB7,
+            0x00,  # MAC
+            0x01,
+            0x09,
+            0x01,
+            0x03,
+            0x03,
+            0x01,  # firmware fields
+            0x50,
+            0x4C,
+            0x36,
+            0x30,  # "PL60"
+            0x40,  # checksum
+        ]
+    )
     info = neewer.parse_device_info(raw)
     assert info is not None
     assert info["mac"] == "D4:ED:61:C3:B7:00"
@@ -695,12 +737,12 @@ def test_build_gel_infinity_native():
     pkt = neewer.build_gel("infinity", mac, 70, "L088")
     assert pkt[1] == neewer.TAG_GEL_MAC  # 0xAD native gel
     # brand=2 (LEE), gel_num=88
-    assert pkt[-3] == 2    # brand
-    assert pkt[-2] == 88   # gel_num
+    assert pkt[-3] == 2  # brand
+    assert pkt[-2] == 88  # gel_num
     # CCT-type preset: R38 Rose
     pkt2 = neewer.build_gel("infinity", mac, 70, "R38")
     assert pkt2[1] == neewer.TAG_GEL_MAC  # native gel, not 0x90 CCT
-    assert pkt2[-3] == 1   # brand=ROSCO
+    assert pkt2[-3] == 1  # brand=ROSCO
     assert pkt2[-2] == 38  # gel_num
     # Non-infinity still uses CCT/HSI
     pkt3 = neewer.build_gel("extended", mac, 70, "R38")
@@ -733,7 +775,9 @@ def test_build_parser():
     # Test known subcommand
     args = parser.parse_args(["scan"])
     assert args.command == "scan"
-    args = parser.parse_args(["cct", "--light", "0", "--brightness", "80", "--temp", "5600"])
+    args = parser.parse_args(
+        ["cct", "--light", "0", "--brightness", "80", "--temp", "5600"]
+    )
     assert args.command == "cct"
     assert args.brightness == 80
     assert args.temp == 5600
@@ -744,9 +788,9 @@ def test_cct_gm_extended():
     pkt = neewer.cmd_cct_extended(80, 5600, -10)
     assert pkt[0] == 0x78
     assert pkt[1] == 0x87  # CCT tag
-    assert pkt[3] == 80    # brightness
-    assert pkt[4] == 56    # CCT value (5600/100)
-    assert pkt[5] == 40    # GM (-10 + 50 = 40)
+    assert pkt[3] == 80  # brightness
+    assert pkt[4] == 56  # CCT value (5600/100)
+    assert pkt[5] == 40  # GM (-10 + 50 = 40)
 
 
 def test_cct_split():
@@ -774,12 +818,12 @@ def test_int_loop_cct():
     assert pkt[1] == neewer.TAG_SCENE
     # After MAC and SUBTAG: [0x0E, 0x00, brr, brr_hi, 0, 0, cct, speed]
     payload_start = 10  # prefix + tag + size + 6 MAC + subtag
-    assert pkt[payload_start] == 0x0E      # effect ID
+    assert pkt[payload_start] == 0x0E  # effect ID
     assert pkt[payload_start + 1] == 0x00  # CCT sub-mode
-    assert pkt[payload_start + 2] == 50    # brr
-    assert pkt[payload_start + 3] == 100   # brr_hi (default)
-    assert pkt[payload_start + 6] == 56    # cct (5600/100)
-    assert pkt[payload_start + 7] == 5     # speed
+    assert pkt[payload_start + 2] == 50  # brr
+    assert pkt[payload_start + 3] == 100  # brr_hi (default)
+    assert pkt[payload_start + 6] == 56  # cct (5600/100)
+    assert pkt[payload_start + 7] == 5  # speed
     assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
 
 
@@ -789,13 +833,13 @@ def test_int_loop_hsi():
     pkt = neewer.cmd_scene(mac, 0x0E, brightness=50, speed=5, hue=240)
     assert pkt[0] == 0x78
     payload_start = 10
-    assert pkt[payload_start] == 0x0E      # effect ID
+    assert pkt[payload_start] == 0x0E  # effect ID
     assert pkt[payload_start + 1] == 0x01  # HSI sub-mode
-    assert pkt[payload_start + 2] == 50    # brr
-    assert pkt[payload_start + 3] == 100   # brr_hi (default)
-    assert pkt[payload_start + 4] == 240   # hue low byte (240 & 0xFF)
-    assert pkt[payload_start + 5] == 0     # hue high byte (240 >> 8)
-    assert pkt[payload_start + 7] == 5     # speed
+    assert pkt[payload_start + 2] == 50  # brr
+    assert pkt[payload_start + 3] == 100  # brr_hi (default)
+    assert pkt[payload_start + 4] == 240  # hue low byte (240 & 0xFF)
+    assert pkt[payload_start + 5] == 0  # hue high byte (240 >> 8)
+    assert pkt[payload_start + 7] == 5  # speed
     assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
 
 
@@ -805,10 +849,10 @@ def test_int_loop_extended():
     assert pkt[0] == 0x78
     assert pkt[1] == 0x8B  # scene tag (extended)
     # After tag+size: [0x0E, 0x01, brr, brr_hi, hue_lo, hue_hi, 0, speed]
-    assert pkt[3] == 0x0E      # effect ID
-    assert pkt[4] == 0x01      # HSI sub-mode
-    assert pkt[5] == 60        # brr
-    assert pkt[7] == 120       # hue low byte
+    assert pkt[3] == 0x0E  # effect ID
+    assert pkt[4] == 0x01  # HSI sub-mode
+    assert pkt[5] == 60  # brr
+    assert pkt[7] == 120  # hue low byte
     assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
 
 
@@ -818,7 +862,9 @@ def test_new_model_entries():
     for name in ["TL40", "GR18C", "TL21C", "VL67C", "Q200", "CB200C", "CB300C"]:
         info = neewer.detect_model_info(f"NEEWER-{name}")
         assert info is not None, f"{name} not found"
-        assert info[4] in ("infinity", "extended", "legacy"), f"{name} bad protocol: {info[4]}"
+        assert info[4] in ("infinity", "extended", "legacy"), (
+            f"{name} bad protocol: {info[4]}"
+        )
 
 
 def test_resolve_effect_none():
@@ -830,8 +876,30 @@ def test_resolve_effect_none():
 def test_fragment_reassembly():
     """parse_device_info handles reassembled multi-fragment responses."""
     # Simulated TL120C response: "TL120 RGB-2" spans two BLE packets
-    frag1 = bytes([0x78, 0x08, 0x17, 0xEB, 0x43, 0xD1, 0x20, 0xF7, 0x8D,
-                   0x01, 0x0A, 0x02, 0x00, 0x05, 0x02, 0x54, 0x4C, 0x31, 0x32, 0x30])
+    frag1 = bytes(
+        [
+            0x78,
+            0x08,
+            0x17,
+            0xEB,
+            0x43,
+            0xD1,
+            0x20,
+            0xF7,
+            0x8D,
+            0x01,
+            0x0A,
+            0x02,
+            0x00,
+            0x05,
+            0x02,
+            0x54,
+            0x4C,
+            0x31,
+            0x32,
+            0x30,
+        ]
+    )
     frag2 = bytes([0x20, 0x52, 0x47, 0x42, 0x2D, 0x32, 0xDB])
     full = frag1 + frag2
     info = neewer.parse_device_info(full)
@@ -892,13 +960,27 @@ def test_hue_wrap_shortest_path():
 def test_firmware_parsing():
     """Firmware version is correctly extracted from device info fields."""
     # Minimal device info packet
-    data = bytes([
-        0x78, 0x08, 0x0D,
-        0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,  # MAC
-        0x02, 0x05, 0x03, 0x01, 0x00, 0x04,  # fields: fw 2.5.3, build 1.0.4
-        0x58,  # "X" model name (1 char)
-        0x00   # checksum placeholder
-    ])
+    data = bytes(
+        [
+            0x78,
+            0x08,
+            0x0D,
+            0xAA,
+            0xBB,
+            0xCC,
+            0xDD,
+            0xEE,
+            0xFF,  # MAC
+            0x02,
+            0x05,
+            0x03,
+            0x01,
+            0x00,
+            0x04,  # fields: fw 2.5.3, build 1.0.4
+            0x58,  # "X" model name (1 char)
+            0x00,  # checksum placeholder
+        ]
+    )
     info = neewer.parse_device_info(data)
     assert info is not None
     assert info["firmware"] == "2.5.3"
@@ -949,6 +1031,7 @@ def test_resolve_color_case_insensitive():
 def test_connect_and_run_raises_not_exits():
     """connect_and_run raises ConnectionError instead of sys.exit on failure."""
     import inspect
+
     src = inspect.getsource(neewer.connect_and_run)
     # Should NOT contain sys.exit (would break multi-light error isolation)
     assert "sys.exit" not in src
@@ -957,7 +1040,9 @@ def test_connect_and_run_raises_not_exits():
 def test_all_effects_have_params():
     """Every EFFECTS entry has a corresponding EFFECT_PARAMS entry."""
     for name, eid in neewer.EFFECTS.items():
-        assert eid in neewer.EFFECT_PARAMS, f"Missing EFFECT_PARAMS for {name} (0x{eid:02X})"
+        assert eid in neewer.EFFECT_PARAMS, (
+            f"Missing EFFECT_PARAMS for {name} (0x{eid:02X})"
+        )
 
 
 def test_all_gel_presets_format():
@@ -1055,85 +1140,87 @@ def test_preset_save_zero_values():
     result_bad = val or 100  # old behavior: 100 (wrong!)
     result_good = val if val is not None else 100  # new behavior: 0 (correct!)
     assert result_bad == 100  # confirms the bug existed
-    assert result_good == 0   # confirms the fix works
+    assert result_good == 0  # confirms the fix works
 
 
 # === Channel-addressed command tests ===
+
 
 def test_channel_cmd_envelope():
     """Channel command: 78 TAG LEN NETID[4] CH SUBTAG PARAMS CS"""
     pkt = neewer.channel_cmd(0x93, 0x12345678, 3, 0x87, [50, 56, 50, 4, 0])
     assert pkt[0] == 0x78
-    assert pkt[1] == 0x93        # TAG_CH_CCT
-    assert pkt[2] == 11          # 4 NETID + 1 CH + 1 SUBTAG + 5 params
+    assert pkt[1] == 0x93  # TAG_CH_CCT
+    assert pkt[2] == 11  # 4 NETID + 1 CH + 1 SUBTAG + 5 params
     # NetworkId 0x12345678 LE: 78, 56, 34, 12
     assert pkt[3] == 0x78
     assert pkt[4] == 0x56
     assert pkt[5] == 0x34
     assert pkt[6] == 0x12
-    assert pkt[7] == 3           # channel
-    assert pkt[8] == 0x87        # SUBTAG_CCT
-    assert pkt[9] == 50          # brightness
+    assert pkt[7] == 3  # channel
+    assert pkt[8] == 0x87  # SUBTAG_CCT
+    assert pkt[9] == 50  # brightness
     assert pkt[-1] == neewer.calc_checksum(list(pkt[:-1]))
 
 
 def test_ch_cmd_power_on():
     pkt = neewer.ch_cmd_power(0x00000001, 1, on=True)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0x98        # TAG_CH_POWER
-    assert pkt[2] == 7           # 4 NETID + 1 CH + 1 SUBTAG + 1 param
+    assert pkt[1] == 0x98  # TAG_CH_POWER
+    assert pkt[2] == 7  # 4 NETID + 1 CH + 1 SUBTAG + 1 param
     assert pkt[3:7] == bytes([0x01, 0x00, 0x00, 0x00])  # NETID LE
-    assert pkt[7] == 1           # channel
-    assert pkt[8] == 0x81        # SUBTAG_POWER
-    assert pkt[9] == 0x01        # ON
+    assert pkt[7] == 1  # channel
+    assert pkt[8] == 0x81  # SUBTAG_POWER
+    assert pkt[9] == 0x01  # ON
 
 
 def test_ch_cmd_power_off():
     pkt = neewer.ch_cmd_power(0x00000001, 2, on=False)
-    assert pkt[9] == 0x02        # OFF
-    assert pkt[7] == 2           # channel 2
+    assert pkt[9] == 0x02  # OFF
+    assert pkt[7] == 2  # channel 2
 
 
 def test_ch_cmd_cct():
     pkt = neewer.ch_cmd_cct(1000, 1, 80, 5600, gm=-10)
-    assert pkt[1] == 0x93        # TAG_CH_CCT
-    assert pkt[8] == 0x87        # SUBTAG_CCT
-    assert pkt[9] == 80          # brightness
-    assert pkt[10] == 56         # 5600 // 100
-    assert pkt[11] == 40         # gm -10 + 50
-    assert pkt[12] == 4          # curve
-    assert pkt[13] == 0          # dbri
+    assert pkt[1] == 0x93  # TAG_CH_CCT
+    assert pkt[8] == 0x87  # SUBTAG_CCT
+    assert pkt[9] == 80  # brightness
+    assert pkt[10] == 56  # 5600 // 100
+    assert pkt[11] == 40  # gm -10 + 50
+    assert pkt[12] == 4  # curve
+    assert pkt[13] == 0  # dbri
 
 
 def test_ch_cmd_hsi():
     pkt = neewer.ch_cmd_hsi(1000, 1, 240, 100, 80)
-    assert pkt[1] == 0x92        # TAG_CH_HSI
-    assert pkt[8] == 0x86        # SUBTAG_HSI
+    assert pkt[1] == 0x92  # TAG_CH_HSI
+    assert pkt[8] == 0x86  # SUBTAG_HSI
     assert pkt[9] == 240 & 0xFF  # hue lo
     assert pkt[10] == (240 >> 8) & 0xFF  # hue hi = 0
-    assert pkt[11] == 100        # sat
-    assert pkt[12] == 80         # brightness
+    assert pkt[11] == 100  # sat
+    assert pkt[12] == 80  # brightness
 
 
 def test_ch_cmd_scene():
     pkt = neewer.ch_cmd_scene(1000, 1, 0x0A, brightness=80, speed=7)
-    assert pkt[1] == 0x94        # TAG_CH_SCENE
-    assert pkt[8] == 0x8B        # SUBTAG_SCENE
-    assert pkt[9] == 0x0A        # cop-car effect
+    assert pkt[1] == 0x94  # TAG_CH_SCENE
+    assert pkt[8] == 0x8B  # SUBTAG_SCENE
+    assert pkt[9] == 0x0A  # cop-car effect
 
 
 # === Network management command tests ===
+
 
 def test_cmd_channel_assign():
     """78 9F 0C MAC[6] 01 CH NETID[4] CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_channel_assign(mac, 3, 0x12345678)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0x9F        # TAG_CHANNEL_CONFIG
-    assert pkt[2] == 0x0C        # size = 12
+    assert pkt[1] == 0x9F  # TAG_CHANNEL_CONFIG
+    assert pkt[2] == 0x0C  # size = 12
     assert list(pkt[3:9]) == mac
-    assert pkt[9] == 0x01        # action = ADD
-    assert pkt[10] == 3          # channel
+    assert pkt[9] == 0x01  # action = ADD
+    assert pkt[10] == 3  # channel
     # NETID 0x12345678 LE
     assert pkt[11] == 0x78
     assert pkt[12] == 0x56
@@ -1147,8 +1234,8 @@ def test_cmd_channel_remove():
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_channel_remove(mac, 5)
     assert pkt[1] == 0x9F
-    assert pkt[9] == 0x02        # action = DELETE
-    assert pkt[10] == 5          # channel
+    assert pkt[9] == 0x02  # action = DELETE
+    assert pkt[10] == 5  # channel
     assert pkt[11:15] == bytes([0, 0, 0, 0])
     assert len(pkt) == 16
 
@@ -1157,10 +1244,10 @@ def test_cmd_channel_set():
     """78 8C 0B MAC[6] CH NETID[4] CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_channel_set(mac, 1, 0x00000001)
-    assert pkt[1] == 0x8C        # TAG_CHANNEL_SET
-    assert pkt[2] == 0x0B        # size = 11
-    assert pkt[9] == 1           # channel
-    assert pkt[10] == 0x01       # NETID byte 0
+    assert pkt[1] == 0x8C  # TAG_CHANNEL_SET
+    assert pkt[2] == 0x0B  # size = 11
+    assert pkt[9] == 1  # channel
+    assert pkt[10] == 0x01  # NETID byte 0
     assert len(pkt) == 15
 
 
@@ -1168,7 +1255,7 @@ def test_cmd_network_delete():
     """78 9B 09 MAC[6] 02 01 00 CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_network_delete(mac)
-    assert pkt[1] == 0x9B        # TAG_NETWORK_EDIT
+    assert pkt[1] == 0x9B  # TAG_NETWORK_EDIT
     assert pkt[2] == 0x09
     assert pkt[9] == 0x02
     assert pkt[10] == 0x01
@@ -1178,22 +1265,23 @@ def test_cmd_network_delete():
 
 # === Native Gel command tests ===
 
+
 def test_cmd_gel_native():
     """78 AD 0D MAC[6] HUE_HI HUE_LO SAT BRI DBRI BRAND GEL CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_gel_native(mac, 240, 80, 70, brand=1, gel_num=38)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0xAD        # TAG_GEL_MAC
-    assert pkt[2] == 13          # 6 MAC + 7 params
+    assert pkt[1] == 0xAD  # TAG_GEL_MAC
+    assert pkt[2] == 13  # 6 MAC + 7 params
     assert list(pkt[3:9]) == mac
     # Hue 240 in big-endian: 0x00, 0xF0
-    assert pkt[9] == 0x00        # hue hi
-    assert pkt[10] == 240        # hue lo
-    assert pkt[11] == 80         # sat
-    assert pkt[12] == 70         # brightness
-    assert pkt[13] == 0          # dbri
-    assert pkt[14] == 1          # brand = ROSCO
-    assert pkt[15] == 38         # gel number
+    assert pkt[9] == 0x00  # hue hi
+    assert pkt[10] == 240  # hue lo
+    assert pkt[11] == 80  # sat
+    assert pkt[12] == 70  # brightness
+    assert pkt[13] == 0  # dbri
+    assert pkt[14] == 1  # brand = ROSCO
+    assert pkt[15] == 38  # gel number
     assert len(pkt) == 17
 
 
@@ -1202,48 +1290,50 @@ def test_cmd_gel_native_hue_be():
     mac = [0] * 6
     # Hue 300 = 0x012C → HI=0x01, LO=0x2C
     pkt = neewer.cmd_gel_native(mac, 300, 100, 100, brand=2, gel_num=1)
-    assert pkt[9] == 0x01        # hue hi
-    assert pkt[10] == 0x2C       # hue lo = 44
+    assert pkt[9] == 0x01  # hue hi
+    assert pkt[10] == 0x2C  # hue lo = 44
 
 
 def test_ch_cmd_gel_native():
     pkt = neewer.ch_cmd_gel_native(1000, 1, 240, 80, 70, brand=1, gel_num=38)
-    assert pkt[1] == 0xAE        # TAG_GEL_CH
+    assert pkt[1] == 0xAE  # TAG_GEL_CH
 
 
 # === RGBCW command tests ===
+
 
 def test_cmd_rgbcw():
     """78 A9 0E MAC[6] A8 BRI R G B C W DBRI CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_rgbcw(mac, 80, 255, 128, 0, 100, 50)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0xA9        # TAG_RGBCW_MAC
-    assert pkt[9] == 0xA8        # SUBTAG_RGBCW
-    assert pkt[10] == 80         # brightness
-    assert pkt[11] == 255        # red
-    assert pkt[12] == 128        # green
-    assert pkt[13] == 0          # blue
-    assert pkt[14] == 100        # cold
-    assert pkt[15] == 50         # warm
-    assert pkt[16] == 0          # dbri
+    assert pkt[1] == 0xA9  # TAG_RGBCW_MAC
+    assert pkt[9] == 0xA8  # SUBTAG_RGBCW
+    assert pkt[10] == 80  # brightness
+    assert pkt[11] == 255  # red
+    assert pkt[12] == 128  # green
+    assert pkt[13] == 0  # blue
+    assert pkt[14] == 100  # cold
+    assert pkt[15] == 50  # warm
+    assert pkt[16] == 0  # dbri
 
 
 def test_ch_cmd_rgbcw():
     pkt = neewer.ch_cmd_rgbcw(1000, 1, 80, 255, 0, 0, 0, 0)
-    assert pkt[1] == 0xAA        # TAG_RGBCW_CH
-    assert pkt[8] == 0xA8        # SUBTAG_RGBCW
+    assert pkt[1] == 0xAA  # TAG_RGBCW_CH
+    assert pkt[8] == 0xA8  # SUBTAG_RGBCW
 
 
 def test_cmd_rgbcw_clamp():
     mac = [0] * 6
     pkt = neewer.cmd_rgbcw(mac, 150, 300, -10, 0, 0, 0)
-    assert pkt[10] == 100        # brightness clamped to 100
-    assert pkt[11] == 255        # red clamped to 255
-    assert pkt[12] == 0          # green clamped to 0
+    assert pkt[10] == 100  # brightness clamped to 100
+    assert pkt[11] == 255  # red clamped to 255
+    assert pkt[12] == 0  # green clamped to 0
 
 
 # === XY Color Coordinate tests ===
+
 
 def test_encode_xy():
     """0.3127 → [0x0C, 0x37] (3127 as big-endian)."""
@@ -1260,9 +1350,9 @@ def test_cmd_xy():
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_xy(mac, 80, 0.3127, 0.3290)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0xB7        # TAG_XY_MAC
-    assert pkt[2] == 12          # 6 MAC + 6 params (no subtag)
-    assert pkt[9] == 80          # brightness
+    assert pkt[1] == 0xB7  # TAG_XY_MAC
+    assert pkt[2] == 12  # 6 MAC + 6 params (no subtag)
+    assert pkt[9] == 80  # brightness
     # x = 0.3127 → [0x0C, 0x37]
     assert pkt[10] == 0x0C
     assert pkt[11] == 0x37
@@ -1273,18 +1363,19 @@ def test_cmd_xy():
 
 def test_ch_cmd_xy():
     pkt = neewer.ch_cmd_xy(1000, 1, 80, 0.3127, 0.3290)
-    assert pkt[1] == 0xB8        # TAG_XY_CH
+    assert pkt[1] == 0xB8  # TAG_XY_CH
 
 
 # === Utility command tests ===
+
 
 def test_cmd_find():
     """78 99 06 MAC[6] CS"""
     mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
     pkt = neewer.cmd_find(mac)
     assert pkt[0] == 0x78
-    assert pkt[1] == 0x99        # TAG_FIND
-    assert pkt[2] == 6           # size = 6 (just MAC)
+    assert pkt[1] == 0x99  # TAG_FIND
+    assert pkt[2] == 6  # size = 6 (just MAC)
     assert list(pkt[3:9]) == mac
     assert len(pkt) == 10
 
@@ -1310,8 +1401,8 @@ def test_cmd_fan_set():
     mac = [0] * 6
     pkt = neewer.cmd_fan_set(mac, 2)
     assert pkt[1] == 0xB4
-    assert pkt[2] == 7           # 6 MAC + 1 param
-    assert pkt[9] == 2           # fan mode
+    assert pkt[2] == 7  # 6 MAC + 1 param
+    assert pkt[9] == 2  # fan mode
     assert len(pkt) == 11
 
 
@@ -1332,6 +1423,7 @@ def test_cmd_booster_query():
 
 
 # === Cross-verify: channel vs MAC command parity ===
+
 
 def test_channel_vs_mac_cct_parity():
     """Channel CCT and MAC CCT should produce same SUBTAG and params."""

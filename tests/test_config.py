@@ -1,7 +1,8 @@
 """Tests for neewer_config.py — configuration management."""
+
 import os
-import json
 import tempfile
+
 from neewer import config as neewer_config
 
 
@@ -159,6 +160,7 @@ def test_network_id_is_random():
 
 # --- Task 2: Snapshots ---
 
+
 def test_snapshot_save():
     store, path = _tmp_store()
     store.create("studio")
@@ -214,6 +216,7 @@ def test_snapshot_list():
 
 
 # --- Task 3: Resolution helpers ---
+
 
 def test_resolve_all_roles():
     store, path = _tmp_store()

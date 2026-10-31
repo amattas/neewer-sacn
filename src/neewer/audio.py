@@ -5,10 +5,13 @@ Pluggable source abstraction — MicSource implemented, others planned.
 
 Requires: pip install -r requirements-audio.txt (numpy, sounddevice)
 """
+
 try:
     import numpy as np
 except ImportError:
-    raise ImportError("Audio requires numpy. Install: pip install -r requirements-audio.txt")
+    raise ImportError(
+        "Audio requires numpy. Install: pip install -r requirements-audio.txt"
+    )
 
 import asyncio
 
@@ -27,7 +30,7 @@ def compute_rms(samples):
     """Compute RMS (root mean square) amplitude of a sample buffer."""
     if len(samples) == 0:
         return 0.0
-    return float(np.sqrt(np.mean(samples ** 2)))
+    return float(np.sqrt(np.mean(samples**2)))
 
 
 def compute_bands(samples, sample_rate=44100):
@@ -66,7 +69,7 @@ class BeatDetector:
 
     def process(self, samples):
         """Process a sample buffer. Returns True if beat detected."""
-        energy = float(np.mean(samples ** 2))
+        energy = float(np.mean(samples**2))
         self.history.append(energy)
         if len(self.history) > self.history_size:
             self.history.pop(0)
@@ -85,8 +88,10 @@ class BeatDetector:
     def bpm(self):
         if len(self.beat_times) < 2:
             return 0.0
-        intervals = [self.beat_times[i] - self.beat_times[i - 1]
-                     for i in range(1, len(self.beat_times))]
+        intervals = [
+            self.beat_times[i] - self.beat_times[i - 1]
+            for i in range(1, len(self.beat_times))
+        ]
         avg_interval = sum(intervals) / len(intervals)
         if avg_interval <= 0:
             return 0.0
@@ -120,6 +125,7 @@ class MicSource(AudioSource):
 
     async def start(self):
         import sounddevice as sd
+
         self._buffer_ready = asyncio.Event()
 
         def callback(indata, frames, time_info, status):
@@ -159,6 +165,7 @@ class MicSource(AudioSource):
 
         if beat:
             import time
+
             self.beat_detector.beat_times.append(time.time())
             if len(self.beat_detector.beat_times) > 20:
                 self.beat_detector.beat_times.pop(0)

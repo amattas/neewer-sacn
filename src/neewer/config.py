@@ -5,6 +5,7 @@ channel auto-management, and state snapshots.
 
 Storage: .neewer_config.json (separate from .neewer_cache.json)
 """
+
 import json
 import os
 import random
@@ -118,8 +119,7 @@ class ConfigStore:
                 raise ValueError(f"Role '{role}' not found in '{config_name}'")
             info = lights[role]
             return [(role, info["device"], channels.get(role))]
-        return [(r, info["device"], channels.get(r))
-                for r, info in lights.items()]
+        return [(r, info["device"], channels.get(r)) for r, info in lights.items()]
 
     def parse_target(self, target_str):
         """Parse 'config:role' or 'config' → (config_name, role_or_None)."""
@@ -152,6 +152,7 @@ class ConfigStore:
 
 
 # --- Display helpers ---
+
 
 def print_config(store, name):
     cfg = store._get_config(name)

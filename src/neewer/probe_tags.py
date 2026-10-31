@@ -14,9 +14,8 @@ Usage:
 
 import argparse
 import asyncio
-import sys
 
-from bleak import BleakClient, BleakScanner
+from bleak import BleakClient
 
 from neewer import protocol as neewer
 
@@ -46,6 +45,7 @@ async def probe_light(address, name, tag_range, try_subtags=False, try_params=Fa
     # Resolve protocol and MAC
     proto = neewer.detect_protocol(name)
     import platform
+
     if platform.system() == "Darwin":
         mac_str = await neewer._resolve_mac_from_profiler(name)
         mac_bytes = neewer.parse_mac(mac_str) if mac_str else [0] * 6
@@ -93,7 +93,7 @@ async def probe_light(address, name, tag_range, try_subtags=False, try_params=Fa
 
     print(f"\n  Probing TAGs 0x{tag_start:02X}-0x{tag_end:02X}...")
     print(f"  {'TAG':<8s} {'Sent':<45s} {'Response'}")
-    print(f"  {'-'*8} {'-'*45} {'-'*40}")
+    print(f"  {'-' * 8} {'-' * 45} {'-' * 40}")
 
     for tag in range(tag_start, tag_end + 1):
         if tag in KNOWN_TAGS or tag in KNOWN_LEGACY:
@@ -141,7 +141,7 @@ async def probe_light(address, name, tag_range, try_subtags=False, try_params=Fa
     await client.disconnect()
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     if found:
         print(f"DISCOVERED {len(found)} valid response(s):")
         for tag, subtag, params, resp in found:
@@ -149,24 +149,34 @@ async def probe_light(address, name, tag_range, try_subtags=False, try_params=Fa
             print(f"    Response: {neewer.fmt_hex(resp)}")
     else:
         print("No new valid TAGs found in this range.")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     return found
 
 
 async def main():
     parser = argparse.ArgumentParser(
-        description="Probe unknown BLE TAGs on Neewer Infinity lights")
-    parser.add_argument("--light", "-l", default="0",
-                        help="light index or name (default: 0)")
-    parser.add_argument("--range", "-r", nargs=2, default=["0x80", "0xAF"],
-                        help="TAG range to probe (hex, default: 0x80 0xAF)")
-    parser.add_argument("--subtags", action="store_true",
-                        help="also vary the subtag byte")
-    parser.add_argument("--params", action="store_true",
-                        help="also try common param patterns")
-    parser.add_argument("--timeout", type=float, default=5.0,
-                        help="BLE scan timeout (default: 5)")
+        description="Probe unknown BLE TAGs on Neewer Infinity lights"
+    )
+    parser.add_argument(
+        "--light", "-l", default="0", help="light index or name (default: 0)"
+    )
+    parser.add_argument(
+        "--range",
+        "-r",
+        nargs=2,
+        default=["0x80", "0xAF"],
+        help="TAG range to probe (hex, default: 0x80 0xAF)",
+    )
+    parser.add_argument(
+        "--subtags", action="store_true", help="also vary the subtag byte"
+    )
+    parser.add_argument(
+        "--params", action="store_true", help="also try common param patterns"
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=5.0, help="BLE scan timeout (default: 5)"
+    )
     args = parser.parse_args()
 
     tag_start = int(args.range[0], 0)
@@ -198,8 +208,12 @@ async def main():
 
     name = device.name or adv.local_name or device.address
     await probe_light(
-        device.address, name, (tag_start, tag_end),
-        try_subtags=args.subtags, try_params=args.params)
+        device.address,
+        name,
+        (tag_start, tag_end),
+        try_subtags=args.subtags,
+        try_params=args.params,
+    )
 
 
 if __name__ == "__main__":

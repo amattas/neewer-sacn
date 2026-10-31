@@ -1,7 +1,10 @@
 """Tests for neewer_scenes.py — scene engine."""
+
 import os
 import tempfile
+
 import yaml
+
 from neewer import scenes as neewer_scenes
 
 
@@ -43,13 +46,13 @@ def test_parse_duration():
 
 
 def test_load_generative_scene():
-    code = '''
+    code = """
 name = "Test Gen"
 fps = 20
 
 def render(tick, lights, params, audio=None):
     return {"all": {"mode": "cct", "brightness": 50, "temp": 5000}}
-'''
+"""
     fd, path = tempfile.mkstemp(suffix=".py")
     with os.fdopen(fd, "w") as f:
         f.write(code)
@@ -83,8 +86,11 @@ def test_step_targets():
         "duration": "5s",
         "targets": ["key", "fill"],
         "steps": [
-            {"at": "0s", "key": {"mode": "cct", "brightness": 80, "temp": 5600},
-                         "fill": {"mode": "cct", "brightness": 40, "temp": 4200}},
+            {
+                "at": "0s",
+                "key": {"mode": "cct", "brightness": 80, "temp": 5600},
+                "fill": {"mode": "cct", "brightness": 40, "temp": 4200},
+            },
         ],
     }
     path = _write_yaml(data)
@@ -103,6 +109,7 @@ import asyncio
 
 class FakeLight:
     """Mock light for testing scene runner."""
+
     def __init__(self, role):
         self.role = role
         self.commands = []
@@ -112,13 +119,13 @@ class FakeLight:
 
 
 def test_scene_runner_generative():
-    code = '''
+    code = """
 name = "Gen Test"
 fps = 100
 
 def render(tick, lights, params, audio=None):
     return {"all": {"mode": "cct", "brightness": 50, "temp": 5000}}
-'''
+"""
     fd, path = tempfile.mkstemp(suffix=".py")
     with os.fdopen(fd, "w") as f:
         f.write(code)

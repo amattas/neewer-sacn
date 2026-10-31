@@ -8,6 +8,7 @@ Usage:
     scene = load_scene("scenes/sunset-fade.yaml")
     scene = load_scene("scenes/rainbow_chase.py")
 """
+
 import asyncio
 import importlib.util
 import os
@@ -20,7 +21,7 @@ import yaml
 def parse_duration(s):
     """Parse duration string like '10s', '2m', '30' to float seconds."""
     s = str(s).strip()
-    m = re.match(r'^([\d.]+)(s|m)?$', s)
+    m = re.match(r"^([\d.]+)(s|m)?$", s)
     if not m:
         raise ValueError(f"Invalid duration: {s}")
     val = float(m.group(1))
@@ -267,6 +268,7 @@ class BLELight:
 
     async def send(self, mode, params):
         import neewer
+
         bri = params.get("brightness", 50)
 
         if mode == "cct":
@@ -285,7 +287,9 @@ class BLELight:
                 pkt = neewer.build_hsi(self.proto, self.mac_bytes, hue, sat, bri)
         elif mode == "scene":
             effect = params.get("effect", "lightning")
-            eid = neewer.EFFECTS.get(effect, 0x01) if isinstance(effect, str) else effect
+            eid = (
+                neewer.EFFECTS.get(effect, 0x01) if isinstance(effect, str) else effect
+            )
             speed = params.get("speed", 5)
             if self.ch is not None:
                 pkt = neewer.ch_cmd_scene(self.nid, self.ch, eid, bri, speed)
